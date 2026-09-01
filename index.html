@@ -2,10 +2,10 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Семейный планировщик</title>
     <style>
-        /* ----- CSS-переменные для светлой/тёмной темы ----- */
+        /* ----- CSS-переменные для темы ----- */
         :root {
             --bg: #f4f6f9;
             --card-bg: #ffffff;
@@ -20,9 +20,10 @@
             --grid-bg: #f8fafc;
             --grid-cell: #ffffff;
             --hour-line: #eef2f6;
-            --conflict-bg: #fee2e2;   /* фон часа с конфликтом */
+            --conflict-bg: #fee2e2;
             --fab-bg: #2563eb;
             --fab-text: #ffffff;
+            --drag-shadow: 0 8px 30px rgba(0,0,0,0.2);
         }
         body.dark {
             --bg: #0f172a;
@@ -41,13 +42,16 @@
             --conflict-bg: #7f1d1d;
             --fab-bg: #3b82f6;
             --fab-text: #ffffff;
+            --drag-shadow: 0 8px 30px rgba(0,0,0,0.5);
         }
 
-        /* ----- Глобальные стили ----- */
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
+            -webkit-touch-callout: none;
+            -webkit-user-select: none;
+            user-select: none;
         }
         body {
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -55,6 +59,7 @@
             color: var(--text);
             padding: 16px 12px 80px 12px;
             transition: background 0.2s, color 0.2s;
+            touch-action: pan-y; /* разрешаем вертикальный скролл, но не горизонтальный */
         }
         h1 {
             font-size: 24px;
@@ -89,8 +94,6 @@
         .theme-toggle {
             font-size: 24px;
         }
-
-        /* ----- Навигация по неделям ----- */
         .week-nav {
             display: flex;
             justify-content: space-between;
@@ -100,6 +103,7 @@
             padding: 8px 16px;
             border-radius: 40px;
             box-shadow: var(--shadow);
+            touch-action: none; /* отключаем стандартные жесты для навигации */
         }
         .week-nav .week-label {
             font-weight: 500;
@@ -117,8 +121,6 @@
         .week-nav button:hover {
             color: var(--fab-bg);
         }
-
-        /* ----- Фильтры (участники) ----- */
         .filters {
             display: flex;
             flex-wrap: wrap;
@@ -153,8 +155,6 @@
             border: 1px solid rgba(0,0,0,0.1);
             flex-shrink: 0;
         }
-
-        /* ----- Переключатель режимов ----- */
         .view-switch {
             display: flex;
             justify-content: center;
@@ -183,15 +183,13 @@
             box-shadow: 0 2px 6px rgba(0,0,0,0.08);
             color: var(--text);
         }
-
-        /* ----- Контейнер недели ----- */
         .week-container {
             display: flex;
             flex-direction: column;
             gap: 12px;
+            touch-action: pan-y; /* разрешаем вертикальную прокрутку, горизонтальную отключаем для свайпа */
         }
-
-        /* ----- РЕЖИМ "СПИСОК" ----- */
+        /* ----- Режим "Список" (без изменений) ----- */
         .day-list {
             background: var(--day-bg);
             border-radius: 20px;
@@ -272,17 +270,19 @@
             color: #ef4444;
         }
 
-        /* ----- РЕЖИМ "СЕТКА" ----- */
+        /* ----- Режим "Сетка" (с улучшенным drag&drop) ----- */
         .grid-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             margin: 0 -12px;
             padding: 0 12px;
+            touch-action: pan-y; /* позволяем вертикальный скролл, горизонтальный – только если явно потянуть */
         }
         .grid-scroll {
             display: flex;
             gap: 4px;
             min-width: 700px;
+            touch-action: none; /* отключаем стандартную прокрутку для обработки свайпа */
         }
         .grid-day {
             flex: 1;
@@ -308,7 +308,7 @@
         }
         .grid-timeline {
             position: relative;
-            height: 768px; /* 24ч * 32px */
+            height: 768px;
             background: var(--grid-cell);
             border-radius: 0 0 12px 12px;
             overflow: hidden;
@@ -343,9 +343,37 @@
             display: flex;
             flex-direction: column;
             justify-content: center;
-            cursor: default;
+            cursor: grab;
             z-index: 5;
-            transition: all 0.1s;
+            transition: box-shadow 0.2s, opacity 0.2s;
+            touch-action: none;
+        }
+        .grid-event-block:active {
+            cursor: grabbing;
+        }
+        .grid-event-block.dragging {
+            z-index: 1000;
+            box-shadow: var(--drag-shadow);
+            opacity: 0.9;
+            transform: scale(1.02);
+        }
+        .grid-event-block.conflict {
+            outline: 3px solid #ef4444;
+            outline-offset: -2px;
+        }
+        .grid-event-block .conflict-badge {
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .grid-event-block strong {
             font-size: 11px;
@@ -361,15 +389,14 @@
             font-size: 9px;
             opacity: 0.8;
         }
-
-        /* ----- Модальное окно ----- */
+        /* ----- Модалки ----- */
         .modal-overlay {
             display: none;
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.4);
             backdrop-filter: blur(2px);
-            z-index: 1000;
+            z-index: 2000;
             justify-content: center;
             align-items: center;
             padding: 20px;
@@ -465,17 +492,28 @@
             font-size: 18px;
             cursor: pointer;
         }
-        .modal .recurrence-group {
+        .recurrence-group {
             display: flex;
             flex-wrap: wrap;
             gap: 8px;
             align-items: center;
             margin-bottom: 8px;
         }
-        .modal .recurrence-group select,
-        .modal .recurrence-group input {
+        .recurrence-group select,
+        .recurrence-group input {
             flex: 1;
             min-width: 80px;
+        }
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 8px 0;
+        }
+        .checkbox-row input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--fab-bg);
         }
         .btn-primary {
             background: var(--fab-bg);
@@ -505,8 +543,6 @@
         .btn-secondary:hover {
             opacity: 0.8;
         }
-
-        /* ----- Плавающая кнопка ----- */
         .fab {
             position: fixed;
             bottom: 24px;
@@ -541,7 +577,7 @@
             .event-name { font-size: 14px; }
             .modal { padding: 16px; }
             .grid-scroll { min-width: 480px; }
-            .grid-timeline { height: 576px; } /* 24*24px для экономии места */
+            .grid-timeline { height: 576px; }
             .grid-hour { height: 24px; }
             .grid-event-block { font-size: 10px; }
         }
@@ -552,40 +588,26 @@
         📅 Семейный план
         <button class="theme-toggle" onclick="toggleTheme()" title="Сменить тему">🌙</button>
     </h1>
-
     <div class="header-actions">
         <button onclick="openSettings()" title="Настроить семью">⚙️</button>
     </div>
-
-    <!-- Навигация по неделям -->
     <div class="week-nav">
         <button onclick="changeWeek(-1)">◀</button>
         <span class="week-label" id="weekLabel">Неделя</span>
         <button onclick="changeWeek(1)">▶</button>
     </div>
-
-    <!-- Фильтр по участникам -->
     <div class="filters" id="filtersContainer"></div>
-
-    <!-- Переключатель режимов -->
     <div class="view-switch">
         <button class="active" data-view="list" onclick="setView('list')">📋 Список</button>
         <button data-view="grid" onclick="setView('grid')">📊 Сетка</button>
     </div>
-
-    <!-- Контейнер недели -->
     <div class="week-container" id="weekContainer"></div>
-
-    <!-- Плавающая кнопка "Добавить событие" -->
     <button class="fab" onclick="openAddEvent()">＋</button>
 
-    <!-- Модальное окно настроек (участники) -->
+    <!-- Модалка настроек -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
-            <h2>
-                👨‍👩‍👧‍👦 Семья
-                <button onclick="closeSettings()">✕</button>
-            </h2>
+            <h2>👨‍👩‍👧‍👦 Семья <button onclick="closeSettings()">✕</button></h2>
             <div class="member-list" id="memberList"></div>
             <label>Добавить участника</label>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
@@ -597,42 +619,39 @@
         </div>
     </div>
 
-    <!-- Модальное окно добавления/редактирования события -->
+    <!-- Модалка события -->
     <div class="modal-overlay" id="eventModal">
         <div class="modal">
-            <h2>
-                <span id="eventModalTitle">➕ Новое событие</span>
-                <button onclick="closeEvent()">✕</button>
-            </h2>
+            <h2><span id="eventModalTitle">➕ Новое событие</span><button onclick="closeEvent()">✕</button></h2>
             <label>Название</label>
             <input type="text" id="eventName" placeholder="Например: Футбол" />
-
             <label>Начало</label>
             <input type="datetime-local" id="eventStart" />
-
             <label>Окончание</label>
             <input type="datetime-local" id="eventEnd" />
-
             <label>Участник</label>
-            <select id="eventParticipant" style="width:100%; padding:10px 14px; border-radius:40px; border:1px solid var(--border); background:var(--card-bg); color:var(--text);"></select>
-
+            <select id="eventParticipant"></select>
             <label>Повторение</label>
             <div class="recurrence-group">
                 <select id="recurrenceType">
                     <option value="none">Нет</option>
                     <option value="daily">Ежедневно</option>
                     <option value="weekly">Еженедельно</option>
+                    <option value="weekly_workdays">Рабочие дни (5/2)</option>
                     <option value="monthly">Ежемесячно</option>
                     <option value="custom">Каждые N дней</option>
                 </select>
-                <input type="number" id="recurrenceInterval" value="1" min="1" style="width:70px; padding:8px; border:1px solid var(--border); border-radius:40px; background:var(--card-bg); color:var(--text);" />
-                <span style="font-size:13px; color:var(--text-secondary);" id="intervalLabel">дн.</span>
+                <input type="number" id="recurrenceInterval" value="1" min="1" style="width:70px;" />
+                <span id="intervalLabel">дн.</span>
             </div>
             <label>Дата окончания повторения (необязательно)</label>
             <input type="date" id="recurrenceUntil" />
-
+            <div class="checkbox-row">
+                <input type="checkbox" id="allowOverlap" />
+                <label for="allowOverlap">✅ Разрешено пересечение (не считать конфликтом)</label>
+            </div>
             <input type="hidden" id="editingEventId" value="" />
-
+            <input type="hidden" id="editingOriginalDate" value="" />
             <button class="btn-primary" onclick="saveEvent()" id="saveEventBtn">Сохранить</button>
             <button class="btn-secondary" onclick="closeEvent()" style="margin-top:8px;">Отмена</button>
         </div>
@@ -640,62 +659,33 @@
 
     <script>
         // ============================================================
-        //  ДАННЫЕ
+        //  ДАННЫЕ И ХРАНИЛИЩЕ
         // ============================================================
-
         const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#22c55e', '#14b8a6'];
 
-        // Загрузка из localStorage
         function loadData() {
             const raw = localStorage.getItem('familyPlannerData');
             if (raw) {
                 try { return JSON.parse(raw); } catch(e) {}
             }
-            return {
-                members: [],
-                events: []   // каждый event: { id, name, start, end, participantId, recurrence: { type, interval, until } }
-            };
+            return { members: [], events: [] };
         }
-
         function saveData() {
             localStorage.setItem('familyPlannerData', JSON.stringify(data));
         }
-
         let data = loadData();
 
-        // Состояние фильтров
         let filterState = {};
         data.members.forEach(m => filterState[m.id] = true);
-
-        // Смещение недели (0 - текущая)
         let weekOffset = 0;
-
-        // Текущий режим
         let currentView = 'list';
+        let currentTheme = 'auto';
 
-        // Тема
-        let currentTheme = 'auto'; // 'auto', 'light', 'dark'
+        function generateId() { return Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
+        function getMember(id) { return data.members.find(m => m.id === id); }
+        function getMemberColor(id) { const m = getMember(id); return m ? m.color : '#94a3b8'; }
+        function getMemberName(id) { const m = getMember(id); return m ? m.name : 'Неизвестный'; }
 
-        // ---- Вспомогательные функции ----
-        function generateId() {
-            return Date.now() + '_' + Math.random().toString(36).substr(2, 6);
-        }
-
-        function getMember(id) {
-            return data.members.find(m => m.id === id);
-        }
-
-        function getMemberColor(id) {
-            const m = getMember(id);
-            return m ? m.color : '#94a3b8';
-        }
-
-        function getMemberName(id) {
-            const m = getMember(id);
-            return m ? m.name : 'Неизвестный';
-        }
-
-        // Получить диапазон недели с учётом смещения
         function getWeekRange(offset = 0) {
             const now = new Date();
             now.setDate(now.getDate() + offset * 7);
@@ -709,7 +699,6 @@
             sunday.setHours(23,59,59,999);
             return { monday, sunday };
         }
-
         function getWeekDays(offset = 0) {
             const { monday } = getWeekRange(offset);
             const days = [];
@@ -720,60 +709,51 @@
             }
             return days;
         }
-
         function formatDate(date) {
             return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
         }
-
         function formatTime(date) {
             return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         }
 
-        // Проверка, попадает ли событие на указанную дату (без учёта времени)
         function isEventOnDate(event, date) {
             const baseStart = new Date(event.start);
             const baseDate = new Date(baseStart.getFullYear(), baseStart.getMonth(), baseStart.getDate());
             const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-
-            // Если событие не повторяется
             if (!event.recurrence || event.recurrence.type === 'none') {
                 return baseDate.getTime() === target.getTime();
             }
-
             const rec = event.recurrence;
             const until = rec.until ? new Date(rec.until) : null;
             if (until && target > until) return false;
-
-            // Проверяем, что target >= baseDate (не начинается раньше)
             if (target < baseDate) return false;
-
             const diffDays = Math.floor((target - baseDate) / (24*60*60*1000));
-
             switch (rec.type) {
-                case 'daily':
-                    return diffDays % rec.interval === 0;
-                case 'weekly':
-                    // День недели должен совпадать, и разница дней кратна 7*interval
+                case 'daily': return diffDays % rec.interval === 0;
+                case 'weekly': {
                     if (target.getDay() !== baseDate.getDay()) return false;
                     return diffDays % (7 * rec.interval) === 0;
-                case 'monthly':
-                    // Число месяца должно совпадать, и разница в месяцах кратна interval
+                }
+                case 'weekly_workdays': {
+                    const day = target.getDay();
+                    if (day === 0 || day === 6) return false; // выходные
+                    if (target.getDay() !== baseDate.getDay()) return false;
+                    return diffDays % (7 * rec.interval) === 0;
+                }
+                case 'monthly': {
                     if (target.getDate() !== baseDate.getDate()) return false;
                     const monthDiff = (target.getFullYear() - baseDate.getFullYear()) * 12 + (target.getMonth() - baseDate.getMonth());
                     return monthDiff % rec.interval === 0 && monthDiff >= 0;
-                case 'custom':
-                    return diffDays % rec.interval === 0;
-                default:
-                    return false;
+                }
+                case 'custom': return diffDays % rec.interval === 0;
+                default: return false;
             }
         }
 
-        // Получить все события для заданной даты (с учётом повторений)
         function getEventsForDate(date) {
             const result = [];
             data.events.forEach(ev => {
                 if (isEventOnDate(ev, date)) {
-                    // Создаём копию с датой, заменённой на целевую, но время оставляем как в оригинале
                     const evCopy = { ...ev };
                     const start = new Date(ev.start);
                     const end = new Date(ev.end);
@@ -789,38 +769,45 @@
             return result;
         }
 
-        // Получить события для всей недели (массив по дням)
         function getEventsForWeek(offset = 0) {
             const days = getWeekDays(offset);
             return days.map(date => getEventsForDate(date));
         }
 
-        // Проверка пересечения двух интервалов
         function intervalsOverlap(s1, e1, s2, e2) {
             return s1 < e2 && s2 < e1;
+        }
+
+        function hasConflict(event, others) {
+            if (event.allowOverlap) return false;
+            const s1 = new Date(event.start).getTime();
+            const e1 = new Date(event.end).getTime();
+            for (let other of others) {
+                if (other.id === event.id) continue;
+                if (other.allowOverlap) continue;
+                if (other.participantId === event.participantId) continue;
+                const s2 = new Date(other.start).getTime();
+                const e2 = new Date(other.end).getTime();
+                if (intervalsOverlap(s1, e1, s2, e2)) return true;
+            }
+            return false;
         }
 
         // ============================================================
         //  РЕНДЕРИНГ
         // ============================================================
-
         function render() {
             updateWeekLabel();
             renderFilters();
-            if (currentView === 'list') {
-                renderList();
-            } else {
-                renderGrid();
-            }
+            if (currentView === 'list') renderList();
+            else renderGrid();
         }
 
         function updateWeekLabel() {
             const { monday, sunday } = getWeekRange(weekOffset);
-            const label = document.getElementById('weekLabel');
-            label.textContent = `${formatDate(monday)} – ${formatDate(sunday)}`;
+            document.getElementById('weekLabel').textContent = `${formatDate(monday)} – ${formatDate(sunday)}`;
         }
 
-        // ---- Фильтры ----
         function renderFilters() {
             const container = document.getElementById('filtersContainer');
             if (data.members.length === 0) {
@@ -850,21 +837,18 @@
             return filterState[participantId] === false;
         }
 
-        // ---- Режим "Список" ----
+        // ----- Список -----
         function renderList() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(weekOffset);
             const eventsByDay = getEventsForWeek(weekOffset);
-
             let html = '';
             days.forEach((date, index) => {
                 const dayEvents = eventsByDay[index]
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
-
                 html += `<div class="day-list">`;
                 html += `<div class="day-header">${getDayName(index)} <span class="date">${formatDate(date)}</span></div>`;
-
                 if (dayEvents.length === 0) {
                     html += `<div class="empty-day">Нет событий</div>`;
                 } else {
@@ -884,7 +868,7 @@
                                     ${name}
                                 </span>
                                 <div class="event-actions">
-                                    <button onclick="editEvent('${ev.id}')" title="Редактировать">✎</button>
+                                    <button onclick="editEvent('${ev.id}', '${date.toISOString().slice(0,10)}')" title="Редактировать">✎</button>
                                     <button class="delete-event" onclick="deleteEvent('${ev.id}')" title="Удалить">✕</button>
                                 </div>
                             </div>
@@ -897,38 +881,28 @@
         }
 
         function getDayName(index) {
-            const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
-            return names[index];
+            return ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index];
         }
 
-        // ---- Режим "Сетка" ----
+        // ----- Сетка (с drag&drop) -----
         function renderGrid() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(weekOffset);
             const eventsByDay = getEventsForWeek(weekOffset);
+            const hourHeight = window.innerWidth <= 480 ? 24 : 32;
+            const totalHeight = 24 * hourHeight;
 
-            let html = `<div class="grid-wrapper"><div class="grid-scroll">`;
+            let html = `<div class="grid-wrapper"><div class="grid-scroll" id="gridScroll">`;
             days.forEach((date, index) => {
                 const dayEvents = eventsByDay[index]
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
 
-                html += `<div class="grid-day">`;
-                html += `<div class="grid-day-header">${getDayName(index)}<br><span class="date">${formatDate(date)}</span></div>`;
-
-                // Временная шкала
-                const hourHeight = window.innerWidth <= 480 ? 24 : 32;
-                const totalHeight = 24 * hourHeight;
-                html += `<div class="grid-timeline" style="height:${totalHeight}px;">`;
-
-                // Рисуем сетку часов и определяем конфликты
-                // Для каждого часа проверим, есть ли пересечения между событиями разных участников
+                // Определяем конфликты для каждого часа
                 const conflicts = new Array(24).fill(false);
-                // Проверим каждый час: есть ли два события, которые пересекаются в этом часе?
                 for (let h = 0; h < 24; h++) {
                     const hourStart = h;
                     const hourEnd = h + 1;
-                    // Соберём события, которые пересекаются с этим часом (даже частично)
                     const eventsInHour = dayEvents.filter(ev => {
                         const s = new Date(ev.start);
                         const e = new Date(ev.end);
@@ -936,21 +910,22 @@
                         const eHour = e.getHours() + e.getMinutes() / 60;
                         return intervalsOverlap(sHour, eHour, hourStart, hourEnd);
                     });
-                    // Проверим, есть ли среди них события разных участников
                     const participants = new Set(eventsInHour.map(ev => ev.participantId));
-                    if (participants.size >= 2) {
-                        conflicts[h] = true;
-                    }
+                    if (participants.size >= 2) conflicts[h] = true;
                 }
 
-                // Отображаем часы
+                html += `<div class="grid-day" data-day-index="${index}">`;
+                html += `<div class="grid-day-header">${getDayName(index)}<br><span class="date">${formatDate(date)}</span></div>`;
+                html += `<div class="grid-timeline" style="height:${totalHeight}px;" data-date="${date.toISOString().slice(0,10)}">`;
+
+                // Часы
                 for (let h = 0; h < 24; h++) {
                     const top = h * hourHeight;
                     const conflictClass = conflicts[h] ? ' conflict' : '';
                     html += `<div class="grid-hour${conflictClass}" style="top:${top}px; height:${hourHeight}px;">${h}:00${conflicts[h] ? ' ⚠️' : ''}</div>`;
                 }
 
-                // Рисуем события (поверх часов)
+                // События
                 dayEvents.forEach(ev => {
                     const start = new Date(ev.start);
                     const end = new Date(ev.end);
@@ -962,8 +937,14 @@
                     const height = duration * hourHeight;
                     const color = getMemberColor(ev.participantId);
                     const name = getMemberName(ev.participantId);
+                    const isConflict = hasConflict(ev, dayEvents);
+                    const conflictClass = isConflict ? ' conflict' : '';
+                    const badge = isConflict ? '<span class="conflict-badge">⚠️</span>' : '';
                     html += `
-                        <div class="grid-event-block" style="top:${top}px; height:${height}px; background:${color};">
+                        <div class="grid-event-block${conflictClass}" style="top:${top}px; height:${height}px; background:${color};"
+                             data-event-id="${ev.id}" data-date="${date.toISOString().slice(0,10)}"
+                             data-start-hour="${startHour}" data-duration="${duration}">
+                            ${badge}
                             <strong>${ev.name}</strong>
                             <span class="time">${formatTime(start)} – ${formatTime(end)}</span>
                             <span class="participant">${name}</span>
@@ -971,31 +952,247 @@
                     `;
                 });
 
-                html += `</div></div>`; // закрываем timeline и grid-day
+                html += `</div></div>`;
             });
-
             html += `</div></div>`;
             container.innerHTML = html;
+
+            // После рендера назначаем обработчики для drag&drop и свайпа
+            initDragAndDrop();
+            initSwipe();
         }
 
         // ============================================================
-        //  НАВИГАЦИЯ ПО НЕДЕЛЯМ
+        //  DRAG & DROP (перетаскивание пальцем)
         // ============================================================
+        let dragData = null;
+        let dragClone = null;
+        let dragStartX = 0, dragStartY = 0;
+        let dragOffsetX = 0, dragOffsetY = 0;
+        let dragEventId = null;
+        let dragOriginalDate = null;
+        let dragStartHour = 0;
+        let dragDuration = 0;
+        let dragOriginalStart = null;
+        let dragOriginalEnd = null;
 
+        function initDragAndDrop() {
+            const blocks = document.querySelectorAll('.grid-event-block');
+            blocks.forEach(block => {
+                block.addEventListener('touchstart', onDragStart, { passive: false });
+                block.addEventListener('touchmove', onDragMove, { passive: false });
+                block.addEventListener('touchend', onDragEnd, { passive: false });
+                // Для мыши тоже добавим (для тестирования на ПК)
+                block.addEventListener('mousedown', onDragStartMouse);
+            });
+        }
+
+        function onDragStartMouse(e) {
+            e.preventDefault();
+            const block = e.currentTarget;
+            const touch = { clientX: e.clientX, clientY: e.clientY };
+            // Имитируем touchstart
+            const fakeEvent = { target: block, touches: [touch], preventDefault: () => {} };
+            onDragStart(fakeEvent);
+            // Добавим обработчики для мыши
+            document.addEventListener('mousemove', onDragMoveMouse);
+            document.addEventListener('mouseup', onDragEndMouse);
+        }
+
+        function onDragMoveMouse(e) {
+            e.preventDefault();
+            const touch = { clientX: e.clientX, clientY: e.clientY };
+            onDragMove({ touches: [touch], preventDefault: () => {} });
+        }
+
+        function onDragEndMouse(e) {
+            onDragEnd({});
+            document.removeEventListener('mousemove', onDragMoveMouse);
+            document.removeEventListener('mouseup', onDragEndMouse);
+        }
+
+        function onDragStart(e) {
+            e.preventDefault();
+            const block = e.currentTarget;
+            const touch = e.touches ? e.touches[0] : e;
+            if (!touch) return;
+            dragEventId = block.dataset.eventId;
+            dragOriginalDate = block.dataset.date;
+            dragStartHour = parseFloat(block.dataset.startHour);
+            dragDuration = parseFloat(block.dataset.duration);
+
+            // Находим оригинальное событие в data
+            const ev = data.events.find(item => item.id === dragEventId);
+            if (!ev) return;
+            dragOriginalStart = new Date(ev.start);
+            dragOriginalEnd = new Date(ev.end);
+
+            // Создаём клон для перетаскивания
+            const rect = block.getBoundingClientRect();
+            dragOffsetX = touch.clientX - rect.left;
+            dragOffsetY = touch.clientY - rect.top;
+
+            dragClone = block.cloneNode(true);
+            dragClone.style.position = 'fixed';
+            dragClone.style.width = rect.width + 'px';
+            dragClone.style.height = rect.height + 'px';
+            dragClone.style.left = (touch.clientX - dragOffsetX) + 'px';
+            dragClone.style.top = (touch.clientY - dragOffsetY) + 'px';
+            dragClone.style.pointerEvents = 'none';
+            dragClone.style.zIndex = 10000;
+            dragClone.style.opacity = 0.85;
+            dragClone.style.transform = 'scale(1.05)';
+            dragClone.style.boxShadow = 'var(--drag-shadow)';
+            document.body.appendChild(dragClone);
+
+            block.style.opacity = '0.3';
+            dragData = { block, ev };
+        }
+
+        function onDragMove(e) {
+            e.preventDefault();
+            if (!dragClone) return;
+            const touch = e.touches ? e.touches[0] : e;
+            if (!touch) return;
+            dragClone.style.left = (touch.clientX - dragOffsetX) + 'px';
+            dragClone.style.top = (touch.clientY - dragOffsetY) + 'px';
+
+            // Определяем, над каким днём и часом находится палец
+            const gridScroll = document.getElementById('gridScroll');
+            const rect = gridScroll.getBoundingClientRect();
+            const x = touch.clientX - rect.left;
+            const y = touch.clientY - rect.top;
+            // Находим день
+            const dayElements = gridScroll.querySelectorAll('.grid-day');
+            let targetDayIndex = -1;
+            let targetDate = null;
+            dayElements.forEach((dayEl, idx) => {
+                const dayRect = dayEl.getBoundingClientRect();
+                if (touch.clientX >= dayRect.left && touch.clientX < dayRect.right) {
+                    targetDayIndex = idx;
+                    const timeline = dayEl.querySelector('.grid-timeline');
+                    if (timeline) {
+                        targetDate = timeline.dataset.date;
+                    }
+                }
+            });
+            if (targetDayIndex === -1 || !targetDate) return;
+
+            // Определяем час
+            const timeline = dayElements[targetDayIndex].querySelector('.grid-timeline');
+            if (!timeline) return;
+            const timelineRect = timeline.getBoundingClientRect();
+            const relY = touch.clientY - timelineRect.top;
+            const hourHeight = window.innerWidth <= 480 ? 24 : 32;
+            let hour = Math.floor(relY / hourHeight);
+            if (hour < 0) hour = 0;
+            if (hour > 23) hour = 23;
+            const minutes = Math.floor((relY % hourHeight) / hourHeight * 60);
+            const newStartHour = hour + minutes / 60;
+
+            // Обновляем позицию клона, но не меняем дату/время в реальности до отпускания
+            // Сохраняем в dragData временные значения
+            dragData.targetDate = targetDate;
+            dragData.targetHour = newStartHour;
+        }
+
+        function onDragEnd(e) {
+            if (!dragClone) return;
+            // Убираем клон
+            document.body.removeChild(dragClone);
+            dragClone = null;
+
+            if (dragData && dragData.targetDate !== undefined) {
+                // Применяем изменения
+                const ev = data.events.find(item => item.id === dragEventId);
+                if (ev) {
+                    const targetDate = new Date(dragData.targetDate);
+                    const newStart = new Date(targetDate);
+                    newStart.setHours(Math.floor(dragData.targetHour), (dragData.targetHour % 1) * 60, 0, 0);
+                    const newEnd = new Date(newStart);
+                    newEnd.setTime(newStart.getTime() + dragDuration * 3600000);
+
+                    ev.start = newStart.toISOString();
+                    ev.end = newEnd.toISOString();
+                    saveData();
+                    render();
+                }
+            }
+
+            // Восстанавливаем прозрачность блока
+            if (dragData && dragData.block) {
+                dragData.block.style.opacity = '1';
+            }
+            dragData = null;
+            dragEventId = null;
+        }
+
+        // ============================================================
+        //  СВАЙП ДЛЯ ПЕРЕКЛЮЧЕНИЯ НЕДЕЛЬ
+        // ============================================================
+        let swipeStartX = 0;
+        let swipeStartY = 0;
+        let isSwiping = false;
+
+        function initSwipe() {
+            const container = document.getElementById('weekContainer');
+            // Удаляем старые обработчики, чтобы не накапливались
+            container.removeEventListener('touchstart', onSwipeStart);
+            container.removeEventListener('touchmove', onSwipeMove);
+            container.removeEventListener('touchend', onSwipeEnd);
+            container.addEventListener('touchstart', onSwipeStart, { passive: false });
+            container.addEventListener('touchmove', onSwipeMove, { passive: false });
+            container.addEventListener('touchend', onSwipeEnd, { passive: false });
+        }
+
+        function onSwipeStart(e) {
+            const touch = e.touches[0];
+            swipeStartX = touch.clientX;
+            swipeStartY = touch.clientY;
+            isSwiping = false;
+        }
+
+        function onSwipeMove(e) {
+            if (e.touches.length !== 1) return;
+            const touch = e.touches[0];
+            const dx = touch.clientX - swipeStartX;
+            const dy = touch.clientY - swipeStartY;
+            if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+                e.preventDefault();
+                isSwiping = true;
+                // Не переключаем сразу, ждём окончания
+            }
+        }
+
+        function onSwipeEnd(e) {
+            if (!isSwiping) return;
+            const touch = e.changedTouches[0];
+            const dx = touch.clientX - swipeStartX;
+            if (Math.abs(dx) > 50) {
+                if (dx < 0) {
+                    changeWeek(1);  // свайп влево – следующая неделя
+                } else {
+                    changeWeek(-1); // свайп вправо – предыдущая
+                }
+            }
+            isSwiping = false;
+        }
+
+        // ============================================================
+        //  УПРАВЛЕНИЕ НЕДЕЛЯМИ
+        // ============================================================
         function changeWeek(delta) {
             weekOffset += delta;
             render();
         }
 
         // ============================================================
-        //  ДОБАВЛЕНИЕ / РЕДАКТИРОВАНИЕ / УДАЛЕНИЕ
+        //  МОДАЛКИ СОБЫТИЙ
         // ============================================================
-
         function openAddEvent() {
             document.getElementById('eventModalTitle').textContent = '➕ Новое событие';
             document.getElementById('editingEventId').value = '';
             document.getElementById('saveEventBtn').textContent = 'Сохранить';
-            // Сброс полей
             document.getElementById('eventName').value = '';
             const now = new Date();
             const localISOTime = (date) => {
@@ -1010,20 +1207,39 @@
             document.getElementById('recurrenceType').value = 'none';
             document.getElementById('recurrenceInterval').value = 1;
             document.getElementById('recurrenceUntil').value = '';
+            document.getElementById('allowOverlap').checked = false;
+            document.getElementById('editingOriginalDate').value = '';
             populateParticipantSelect();
             openModal('eventModal');
         }
 
-        function editEvent(eventId) {
+        function editEvent(eventId, originalDateStr) {
             const ev = data.events.find(e => e.id === eventId);
             if (!ev) return;
             document.getElementById('eventModalTitle').textContent = '✎ Редактировать событие';
             document.getElementById('editingEventId').value = eventId;
             document.getElementById('saveEventBtn').textContent = 'Обновить';
+
+            let baseDate = originalDateStr ? new Date(originalDateStr) : new Date(ev.start);
+            if (!ev.recurrence || ev.recurrence.type === 'none') {
+                baseDate = new Date(ev.start);
+            }
+            document.getElementById('editingOriginalDate').value = baseDate.toISOString().slice(0,10);
+
             document.getElementById('eventName').value = ev.name;
-            document.getElementById('eventStart').value = new Date(ev.start).toISOString().slice(0, 16);
-            document.getElementById('eventEnd').value = new Date(ev.end).toISOString().slice(0, 16);
             document.getElementById('eventParticipant').value = ev.participantId;
+            document.getElementById('allowOverlap').checked = ev.allowOverlap || false;
+
+            const origStart = new Date(ev.start);
+            const origEnd = new Date(ev.end);
+            const adjustedStart = new Date(baseDate);
+            adjustedStart.setHours(origStart.getHours(), origStart.getMinutes(), 0, 0);
+            const adjustedEnd = new Date(baseDate);
+            adjustedEnd.setHours(origEnd.getHours(), origEnd.getMinutes(), 0, 0);
+
+            document.getElementById('eventStart').value = adjustedStart.toISOString().slice(0, 16);
+            document.getElementById('eventEnd').value = adjustedEnd.toISOString().slice(0, 16);
+
             if (ev.recurrence) {
                 document.getElementById('recurrenceType').value = ev.recurrence.type;
                 document.getElementById('recurrenceInterval').value = ev.recurrence.interval || 1;
@@ -1055,12 +1271,13 @@
         function saveEvent() {
             const id = document.getElementById('editingEventId').value;
             const name = document.getElementById('eventName').value.trim();
-            const start = document.getElementById('eventStart').value;
-            const end = document.getElementById('eventEnd').value;
+            let start = document.getElementById('eventStart').value;
+            let end = document.getElementById('eventEnd').value;
             const participantId = document.getElementById('eventParticipant').value;
             const recType = document.getElementById('recurrenceType').value;
             const recInterval = parseInt(document.getElementById('recurrenceInterval').value) || 1;
             const recUntil = document.getElementById('recurrenceUntil').value;
+            const allowOverlap = document.getElementById('allowOverlap').checked;
 
             if (!name || !start || !end || !participantId) {
                 alert('Заполните все поля!');
@@ -1078,7 +1295,6 @@
             };
 
             if (id) {
-                // Редактирование
                 const ev = data.events.find(e => e.id === id);
                 if (ev) {
                     ev.name = name;
@@ -1086,16 +1302,17 @@
                     ev.end = end;
                     ev.participantId = participantId;
                     ev.recurrence = recurrence;
+                    ev.allowOverlap = allowOverlap;
                 }
             } else {
-                // Новое событие
                 data.events.push({
                     id: generateId(),
                     name,
                     start,
                     end,
                     participantId,
-                    recurrence
+                    recurrence,
+                    allowOverlap
                 });
             }
 
@@ -1114,18 +1331,13 @@
         // ============================================================
         //  НАСТРОЙКИ СЕМЬИ
         // ============================================================
-
         let selectedColor = COLORS[0];
-
         function openSettings() {
             openModal('settingsModal');
             renderMembers();
             renderColorOptions();
         }
-
-        function closeSettings() {
-            closeModal('settingsModal');
-        }
+        function closeSettings() { closeModal('settingsModal'); }
 
         function renderMembers() {
             const container = document.getElementById('memberList');
@@ -1166,31 +1378,23 @@
         function addMember() {
             const input = document.getElementById('newMemberName');
             const name = input.value.trim();
-            if (!name) {
-                alert('Введите имя');
-                return;
-            }
+            if (!name) { alert('Введите имя'); return; }
             if (data.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
                 alert('Участник с таким именем уже есть');
                 return;
             }
-            data.members.push({
-                id: generateId(),
-                name: name,
-                color: selectedColor
-            });
+            data.members.push({ id: generateId(), name, color: selectedColor });
             saveData();
             input.value = '';
             selectedColor = COLORS[0];
             renderColorOptions();
             renderMembers();
-            // Обновляем фильтры
             filterState[data.members[data.members.length-1].id] = true;
             render();
         }
 
         function removeMember(id) {
-            if (!confirm('Удалить участника? Его события сохранятся, но он будет отображаться как "Неизвестный".')) return;
+            if (!confirm('Удалить участника?')) return;
             data.members = data.members.filter(m => m.id !== id);
             delete filterState[id];
             saveData();
@@ -1201,23 +1405,13 @@
         // ============================================================
         //  МОДАЛЬНЫЕ ОКНА
         // ============================================================
-
-        function openModal(id) {
-            document.getElementById(id).classList.add('active');
-        }
-
-        function closeModal(id) {
-            document.getElementById(id).classList.remove('active');
-        }
-
-        function closeEvent() {
-            closeModal('eventModal');
-        }
+        function openModal(id) { document.getElementById(id).classList.add('active'); }
+        function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+        function closeEvent() { closeModal('eventModal'); }
 
         // ============================================================
-        //  ТЕМНАЯ ТЕМА
+        //  ТЕМА
         // ============================================================
-
         function applyTheme(theme) {
             const body = document.body;
             if (theme === 'dark') {
@@ -1227,7 +1421,6 @@
                 body.classList.remove('dark');
                 document.querySelector('.theme-toggle').textContent = '🌙';
             } else {
-                // auto – определяем по системной
                 const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
                 if (prefersDark) {
                     body.classList.add('dark');
@@ -1240,39 +1433,26 @@
             currentTheme = theme;
             localStorage.setItem('themePreference', theme);
         }
-
         function toggleTheme() {
-            if (currentTheme === 'light') {
-                applyTheme('dark');
-            } else if (currentTheme === 'dark') {
-                applyTheme('light');
-            } else {
-                // если был auto, переключаем на противоположный текущему
+            if (currentTheme === 'light') applyTheme('dark');
+            else if (currentTheme === 'dark') applyTheme('light');
+            else {
                 const isDark = document.body.classList.contains('dark');
                 applyTheme(isDark ? 'light' : 'dark');
             }
         }
-
-        // Инициализация темы
         function initTheme() {
             const saved = localStorage.getItem('themePreference');
-            if (saved) {
-                applyTheme(saved);
-            } else {
-                applyTheme('auto');
-            }
-            // Слушаем изменение системной темы, если не выбрано вручную
-            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                if (currentTheme === 'auto') {
-                    applyTheme('auto');
-                }
+            if (saved) applyTheme(saved);
+            else applyTheme('auto');
+            window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+                if (currentTheme === 'auto') applyTheme('auto');
             });
         }
 
         // ============================================================
         //  ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ
         // ============================================================
-
         function setView(view) {
             currentView = view;
             document.querySelectorAll('.view-switch button').forEach(btn => {
@@ -1284,7 +1464,6 @@
         // ============================================================
         //  ИНИЦИАЛИЗАЦИЯ
         // ============================================================
-
         initTheme();
         render();
     </script>
