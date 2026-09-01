@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Семейный планировщик</title>
     <style>
-        /* ----- CSS-переменные для темы ----- */
         :root {
             --bg: #f4f6f9;
             --card-bg: #ffffff;
@@ -24,6 +23,8 @@
             --fab-bg: #2563eb;
             --fab-text: #ffffff;
             --drag-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            --warning-bg: #fef3c7;
+            --warning-text: #92400e;
         }
         body.dark {
             --bg: #0f172a;
@@ -43,8 +44,9 @@
             --fab-bg: #3b82f6;
             --fab-text: #ffffff;
             --drag-shadow: 0 8px 30px rgba(0,0,0,0.5);
+            --warning-bg: #78350f;
+            --warning-text: #fbbf24;
         }
-
         * {
             box-sizing: border-box;
             margin: 0;
@@ -59,7 +61,7 @@
             color: var(--text);
             padding: 16px 12px 80px 12px;
             transition: background 0.2s, color 0.2s;
-            touch-action: pan-y; /* разрешаем вертикальный скролл, но не горизонтальный */
+            touch-action: pan-y;
         }
         h1 {
             font-size: 24px;
@@ -103,7 +105,7 @@
             padding: 8px 16px;
             border-radius: 40px;
             box-shadow: var(--shadow);
-            touch-action: none; /* отключаем стандартные жесты для навигации */
+            touch-action: none;
         }
         .week-nav .week-label {
             font-weight: 500;
@@ -187,9 +189,8 @@
             display: flex;
             flex-direction: column;
             gap: 12px;
-            touch-action: pan-y; /* разрешаем вертикальную прокрутку, горизонтальную отключаем для свайпа */
+            touch-action: pan-y;
         }
-        /* ----- Режим "Список" (без изменений) ----- */
         .day-list {
             background: var(--day-bg);
             border-radius: 20px;
@@ -269,20 +270,18 @@
         .event-actions .delete-event:hover {
             color: #ef4444;
         }
-
-        /* ----- Режим "Сетка" (с улучшенным drag&drop) ----- */
         .grid-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             margin: 0 -12px;
             padding: 0 12px;
-            touch-action: pan-y; /* позволяем вертикальный скролл, горизонтальный – только если явно потянуть */
+            touch-action: pan-y;
         }
         .grid-scroll {
             display: flex;
             gap: 4px;
             min-width: 700px;
-            touch-action: none; /* отключаем стандартную прокрутку для обработки свайпа */
+            touch-action: pan-y;
         }
         .grid-day {
             flex: 1;
@@ -389,7 +388,6 @@
             font-size: 9px;
             opacity: 0.8;
         }
-        /* ----- Модалки ----- */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -543,6 +541,20 @@
         .btn-secondary:hover {
             opacity: 0.8;
         }
+        .btn-warning {
+            background: var(--warning-bg);
+            color: var(--warning-text);
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+        .btn-warning:hover {
+            opacity: 0.8;
+        }
         .fab {
             position: fixed;
             bottom: 24px;
@@ -565,8 +577,6 @@
         .fab:hover {
             transform: scale(1.05);
         }
-
-        /* ----- Адаптив ----- */
         @media (max-width: 480px) {
             body { padding: 12px 8px 80px 8px; }
             .filters { padding: 8px 12px; gap: 4px 10px; }
@@ -657,6 +667,18 @@
         </div>
     </div>
 
+    <!-- Модалка конфликта -->
+    <div class="modal-overlay" id="conflictModal">
+        <div class="modal">
+            <h2>⚠️ Обнаружен конфликт</h2>
+            <p id="conflictMessage" style="margin:16px 0; line-height:1.5;"></p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="btn-warning" onclick="acceptConflict()" style="flex:1;">✅ Принять конфликт</button>
+                <button class="btn-secondary" onclick="rejectConflict()" style="flex:1;">✏️ Изменить время</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         //  ДАННЫЕ И ХРАНИЛИЩЕ
@@ -680,6 +702,7 @@
         let weekOffset = 0;
         let currentView = 'list';
         let currentTheme = 'auto';
+        let pendingEvent = null; // для конфликта
 
         function generateId() { return Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
         function getMember(id) { return data.members.find(m => m.id === id); }
@@ -716,6 +739,13 @@
             return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
         }
 
+        // Преобразование даты в локальный формат для input datetime-local
+        function toLocalDatetime(date) {
+            const offset = date.getTimezoneOffset();
+            const local = new Date(date.getTime() - offset * 60000);
+            return local.toISOString().slice(0, 16);
+        }
+
         function isEventOnDate(event, date) {
             const baseStart = new Date(event.start);
             const baseDate = new Date(baseStart.getFullYear(), baseStart.getMonth(), baseStart.getDate());
@@ -736,7 +766,7 @@
                 }
                 case 'weekly_workdays': {
                     const day = target.getDay();
-                    if (day === 0 || day === 6) return false; // выходные
+                    if (day === 0 || day === 6) return false;
                     if (target.getDay() !== baseDate.getDay()) return false;
                     return diffDays % (7 * rec.interval) === 0;
                 }
@@ -878,13 +908,15 @@
                 html += `</div>`;
             });
             container.innerHTML = html;
+            // Включаем свайп только в режиме списка
+            initSwipe();
         }
 
         function getDayName(index) {
             return ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index];
         }
 
-        // ----- Сетка (с drag&drop) -----
+        // ----- Сетка (без свайпа) -----
         function renderGrid() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(weekOffset);
@@ -898,7 +930,7 @@
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
 
-                // Определяем конфликты для каждого часа
+                // Определяем конфликты для каждого часа (только для неподтверждённых)
                 const conflicts = new Array(24).fill(false);
                 for (let h = 0; h < 24; h++) {
                     const hourStart = h;
@@ -910,22 +942,32 @@
                         const eHour = e.getHours() + e.getMinutes() / 60;
                         return intervalsOverlap(sHour, eHour, hourStart, hourEnd);
                     });
-                    const participants = new Set(eventsInHour.map(ev => ev.participantId));
-                    if (participants.size >= 2) conflicts[h] = true;
+                    // Проверяем, есть ли конфликт без учёта allowOverlap
+                    let hasRealConflict = false;
+                    for (let i = 0; i < eventsInHour.length; i++) {
+                        for (let j = i+1; j < eventsInHour.length; j++) {
+                            const a = eventsInHour[i];
+                            const b = eventsInHour[j];
+                            if (a.participantId === b.participantId) continue;
+                            if (a.allowOverlap || b.allowOverlap) continue;
+                            hasRealConflict = true;
+                            break;
+                        }
+                        if (hasRealConflict) break;
+                    }
+                    if (hasRealConflict) conflicts[h] = true;
                 }
 
                 html += `<div class="grid-day" data-day-index="${index}">`;
                 html += `<div class="grid-day-header">${getDayName(index)}<br><span class="date">${formatDate(date)}</span></div>`;
                 html += `<div class="grid-timeline" style="height:${totalHeight}px;" data-date="${date.toISOString().slice(0,10)}">`;
 
-                // Часы
                 for (let h = 0; h < 24; h++) {
                     const top = h * hourHeight;
                     const conflictClass = conflicts[h] ? ' conflict' : '';
                     html += `<div class="grid-hour${conflictClass}" style="top:${top}px; height:${hourHeight}px;">${h}:00${conflicts[h] ? ' ⚠️' : ''}</div>`;
                 }
 
-                // События
                 dayEvents.forEach(ev => {
                     const start = new Date(ev.start);
                     const end = new Date(ev.end);
@@ -937,6 +979,7 @@
                     const height = duration * hourHeight;
                     const color = getMemberColor(ev.participantId);
                     const name = getMemberName(ev.participantId);
+                    // Проверяем конфликт с учётом allowOverlap
                     const isConflict = hasConflict(ev, dayEvents);
                     const conflictClass = isConflict ? ' conflict' : '';
                     const badge = isConflict ? '<span class="conflict-badge">⚠️</span>' : '';
@@ -957,32 +1000,35 @@
             html += `</div></div>`;
             container.innerHTML = html;
 
-            // После рендера назначаем обработчики для drag&drop и свайпа
+            // В сетке свайп отключаем – не инициализируем
             initDragAndDrop();
-            initSwipe();
+            // Удаляем обработчики свайпа, если они были
+            const containerEl = document.getElementById('weekContainer');
+            containerEl.removeEventListener('touchstart', onSwipeStart);
+            containerEl.removeEventListener('touchmove', onSwipeMove);
+            containerEl.removeEventListener('touchend', onSwipeEnd);
         }
 
         // ============================================================
-        //  DRAG & DROP (перетаскивание пальцем)
+        //  DRAG & DROP (только в сетке)
         // ============================================================
         let dragData = null;
         let dragClone = null;
-        let dragStartX = 0, dragStartY = 0;
-        let dragOffsetX = 0, dragOffsetY = 0;
         let dragEventId = null;
         let dragOriginalDate = null;
         let dragStartHour = 0;
         let dragDuration = 0;
-        let dragOriginalStart = null;
-        let dragOriginalEnd = null;
 
         function initDragAndDrop() {
             const blocks = document.querySelectorAll('.grid-event-block');
             blocks.forEach(block => {
+                block.removeEventListener('touchstart', onDragStart);
+                block.removeEventListener('touchmove', onDragMove);
+                block.removeEventListener('touchend', onDragEnd);
+                block.removeEventListener('mousedown', onDragStartMouse);
                 block.addEventListener('touchstart', onDragStart, { passive: false });
                 block.addEventListener('touchmove', onDragMove, { passive: false });
                 block.addEventListener('touchend', onDragEnd, { passive: false });
-                // Для мыши тоже добавим (для тестирования на ПК)
                 block.addEventListener('mousedown', onDragStartMouse);
             });
         }
@@ -991,10 +1037,8 @@
             e.preventDefault();
             const block = e.currentTarget;
             const touch = { clientX: e.clientX, clientY: e.clientY };
-            // Имитируем touchstart
             const fakeEvent = { target: block, touches: [touch], preventDefault: () => {} };
             onDragStart(fakeEvent);
-            // Добавим обработчики для мыши
             document.addEventListener('mousemove', onDragMoveMouse);
             document.addEventListener('mouseup', onDragEndMouse);
         }
@@ -1021,23 +1065,16 @@
             dragStartHour = parseFloat(block.dataset.startHour);
             dragDuration = parseFloat(block.dataset.duration);
 
-            // Находим оригинальное событие в data
-            const ev = data.events.find(item => item.id === dragEventId);
-            if (!ev) return;
-            dragOriginalStart = new Date(ev.start);
-            dragOriginalEnd = new Date(ev.end);
-
-            // Создаём клон для перетаскивания
             const rect = block.getBoundingClientRect();
-            dragOffsetX = touch.clientX - rect.left;
-            dragOffsetY = touch.clientY - rect.top;
+            const offsetX = touch.clientX - rect.left;
+            const offsetY = touch.clientY - rect.top;
 
             dragClone = block.cloneNode(true);
             dragClone.style.position = 'fixed';
             dragClone.style.width = rect.width + 'px';
             dragClone.style.height = rect.height + 'px';
-            dragClone.style.left = (touch.clientX - dragOffsetX) + 'px';
-            dragClone.style.top = (touch.clientY - dragOffsetY) + 'px';
+            dragClone.style.left = (touch.clientX - offsetX) + 'px';
+            dragClone.style.top = (touch.clientY - offsetY) + 'px';
             dragClone.style.pointerEvents = 'none';
             dragClone.style.zIndex = 10000;
             dragClone.style.opacity = 0.85;
@@ -1046,7 +1083,7 @@
             document.body.appendChild(dragClone);
 
             block.style.opacity = '0.3';
-            dragData = { block, ev };
+            dragData = { block, offsetX, offsetY };
         }
 
         function onDragMove(e) {
@@ -1054,15 +1091,11 @@
             if (!dragClone) return;
             const touch = e.touches ? e.touches[0] : e;
             if (!touch) return;
-            dragClone.style.left = (touch.clientX - dragOffsetX) + 'px';
-            dragClone.style.top = (touch.clientY - dragOffsetY) + 'px';
+            dragClone.style.left = (touch.clientX - dragData.offsetX) + 'px';
+            dragClone.style.top = (touch.clientY - dragData.offsetY) + 'px';
 
-            // Определяем, над каким днём и часом находится палец
+            // Определяем целевой день и час
             const gridScroll = document.getElementById('gridScroll');
-            const rect = gridScroll.getBoundingClientRect();
-            const x = touch.clientX - rect.left;
-            const y = touch.clientY - rect.top;
-            // Находим день
             const dayElements = gridScroll.querySelectorAll('.grid-day');
             let targetDayIndex = -1;
             let targetDate = null;
@@ -1071,14 +1104,11 @@
                 if (touch.clientX >= dayRect.left && touch.clientX < dayRect.right) {
                     targetDayIndex = idx;
                     const timeline = dayEl.querySelector('.grid-timeline');
-                    if (timeline) {
-                        targetDate = timeline.dataset.date;
-                    }
+                    if (timeline) targetDate = timeline.dataset.date;
                 }
             });
             if (targetDayIndex === -1 || !targetDate) return;
 
-            // Определяем час
             const timeline = dayElements[targetDayIndex].querySelector('.grid-timeline');
             if (!timeline) return;
             const timelineRect = timeline.getBoundingClientRect();
@@ -1090,20 +1120,16 @@
             const minutes = Math.floor((relY % hourHeight) / hourHeight * 60);
             const newStartHour = hour + minutes / 60;
 
-            // Обновляем позицию клона, но не меняем дату/время в реальности до отпускания
-            // Сохраняем в dragData временные значения
             dragData.targetDate = targetDate;
             dragData.targetHour = newStartHour;
         }
 
         function onDragEnd(e) {
             if (!dragClone) return;
-            // Убираем клон
             document.body.removeChild(dragClone);
             dragClone = null;
 
             if (dragData && dragData.targetDate !== undefined) {
-                // Применяем изменения
                 const ev = data.events.find(item => item.id === dragEventId);
                 if (ev) {
                     const targetDate = new Date(dragData.targetDate);
@@ -1118,8 +1144,6 @@
                     render();
                 }
             }
-
-            // Восстанавливаем прозрачность блока
             if (dragData && dragData.block) {
                 dragData.block.style.opacity = '1';
             }
@@ -1128,7 +1152,7 @@
         }
 
         // ============================================================
-        //  СВАЙП ДЛЯ ПЕРЕКЛЮЧЕНИЯ НЕДЕЛЬ
+        //  СВАЙП (только для списка)
         // ============================================================
         let swipeStartX = 0;
         let swipeStartY = 0;
@@ -1136,13 +1160,16 @@
 
         function initSwipe() {
             const container = document.getElementById('weekContainer');
-            // Удаляем старые обработчики, чтобы не накапливались
+            // Удаляем старые обработчики, чтобы не дублировать
             container.removeEventListener('touchstart', onSwipeStart);
             container.removeEventListener('touchmove', onSwipeMove);
             container.removeEventListener('touchend', onSwipeEnd);
-            container.addEventListener('touchstart', onSwipeStart, { passive: false });
-            container.addEventListener('touchmove', onSwipeMove, { passive: false });
-            container.addEventListener('touchend', onSwipeEnd, { passive: false });
+            // Добавляем только если текущий вид - список
+            if (currentView === 'list') {
+                container.addEventListener('touchstart', onSwipeStart, { passive: false });
+                container.addEventListener('touchmove', onSwipeMove, { passive: false });
+                container.addEventListener('touchend', onSwipeEnd, { passive: false });
+            }
         }
 
         function onSwipeStart(e) {
@@ -1160,7 +1187,6 @@
             if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.2) {
                 e.preventDefault();
                 isSwiping = true;
-                // Не переключаем сразу, ждём окончания
             }
         }
 
@@ -1169,11 +1195,8 @@
             const touch = e.changedTouches[0];
             const dx = touch.clientX - swipeStartX;
             if (Math.abs(dx) > 50) {
-                if (dx < 0) {
-                    changeWeek(1);  // свайп влево – следующая неделя
-                } else {
-                    changeWeek(-1); // свайп вправо – предыдущая
-                }
+                if (dx < 0) changeWeek(1);
+                else changeWeek(-1);
             }
             isSwiping = false;
         }
@@ -1195,15 +1218,10 @@
             document.getElementById('saveEventBtn').textContent = 'Сохранить';
             document.getElementById('eventName').value = '';
             const now = new Date();
-            const localISOTime = (date) => {
-                const offset = date.getTimezoneOffset();
-                const local = new Date(date.getTime() - offset * 60000);
-                return local.toISOString().slice(0, 16);
-            };
-            document.getElementById('eventStart').value = localISOTime(now);
+            document.getElementById('eventStart').value = toLocalDatetime(now);
             const end = new Date(now);
             end.setHours(now.getHours() + 1);
-            document.getElementById('eventEnd').value = localISOTime(end);
+            document.getElementById('eventEnd').value = toLocalDatetime(end);
             document.getElementById('recurrenceType').value = 'none';
             document.getElementById('recurrenceInterval').value = 1;
             document.getElementById('recurrenceUntil').value = '';
@@ -1220,6 +1238,7 @@
             document.getElementById('editingEventId').value = eventId;
             document.getElementById('saveEventBtn').textContent = 'Обновить';
 
+            // Определяем дату, на которой мы редактируем
             let baseDate = originalDateStr ? new Date(originalDateStr) : new Date(ev.start);
             if (!ev.recurrence || ev.recurrence.type === 'none') {
                 baseDate = new Date(ev.start);
@@ -1230,15 +1249,17 @@
             document.getElementById('eventParticipant').value = ev.participantId;
             document.getElementById('allowOverlap').checked = ev.allowOverlap || false;
 
+            // Время из оригинального события
             const origStart = new Date(ev.start);
             const origEnd = new Date(ev.end);
+            // Устанавливаем дату baseDate, время из оригинала
             const adjustedStart = new Date(baseDate);
             adjustedStart.setHours(origStart.getHours(), origStart.getMinutes(), 0, 0);
             const adjustedEnd = new Date(baseDate);
             adjustedEnd.setHours(origEnd.getHours(), origEnd.getMinutes(), 0, 0);
 
-            document.getElementById('eventStart').value = adjustedStart.toISOString().slice(0, 16);
-            document.getElementById('eventEnd').value = adjustedEnd.toISOString().slice(0, 16);
+            document.getElementById('eventStart').value = toLocalDatetime(adjustedStart);
+            document.getElementById('eventEnd').value = toLocalDatetime(adjustedEnd);
 
             if (ev.recurrence) {
                 document.getElementById('recurrenceType').value = ev.recurrence.type;
@@ -1294,18 +1315,20 @@
                 until: recUntil || null
             };
 
+            // Создаём объект события
+            let eventObj;
             if (id) {
                 const ev = data.events.find(e => e.id === id);
-                if (ev) {
-                    ev.name = name;
-                    ev.start = start;
-                    ev.end = end;
-                    ev.participantId = participantId;
-                    ev.recurrence = recurrence;
-                    ev.allowOverlap = allowOverlap;
-                }
+                if (!ev) return;
+                ev.name = name;
+                ev.start = start;
+                ev.end = end;
+                ev.participantId = participantId;
+                ev.recurrence = recurrence;
+                ev.allowOverlap = allowOverlap;
+                eventObj = ev;
             } else {
-                data.events.push({
+                eventObj = {
                     id: generateId(),
                     name,
                     start,
@@ -1313,12 +1336,58 @@
                     participantId,
                     recurrence,
                     allowOverlap
-                });
+                };
+                // Не сохраняем сразу, проверим конфликты
             }
 
+            // Проверка конфликтов (для нового или редактируемого)
+            // Собираем все события, исключая текущее (если редактируем)
+            const others = data.events.filter(e => e.id !== eventObj.id);
+            // Проверяем конфликт с учётом allowOverlap
+            const hasConflictWithOthers = hasConflict(eventObj, others);
+            if (hasConflictWithOthers && !eventObj.allowOverlap) {
+                // Показываем модалку конфликта
+                pendingEvent = eventObj;
+                const message = `Событие "${eventObj.name}" пересекается с другими событиями. Вы можете принять конфликт (тогда оно будет отображаться без предупреждений) или изменить время.`;
+                document.getElementById('conflictMessage').textContent = message;
+                openModal('conflictModal');
+                return;
+            }
+
+            // Если конфликтов нет или allowOverlap true - сохраняем
+            if (id) {
+                // уже обновили выше
+            } else {
+                data.events.push(eventObj);
+            }
             saveData();
             closeModal('eventModal');
             render();
+        }
+
+        function acceptConflict() {
+            if (pendingEvent) {
+                pendingEvent.allowOverlap = true;
+                // Если это новое событие, добавляем
+                if (!data.events.find(e => e.id === pendingEvent.id)) {
+                    data.events.push(pendingEvent);
+                } else {
+                    // обновляем существующее
+                    const ev = data.events.find(e => e.id === pendingEvent.id);
+                    if (ev) ev.allowOverlap = true;
+                }
+                saveData();
+                closeModal('conflictModal');
+                pendingEvent = null;
+                closeModal('eventModal');
+                render();
+            }
+        }
+
+        function rejectConflict() {
+            closeModal('conflictModal');
+            pendingEvent = null;
+            // Оставляем модалку события открытой
         }
 
         function deleteEvent(id) {
