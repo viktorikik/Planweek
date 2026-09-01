@@ -2,237 +2,954 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Планировщик расписания</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes" />
+    <title>Семейный планировщик</title>
     <style>
-        * { box-sizing: border-box; font-family: sans-serif; }
-        body { background: #f5f7fa; padding: 20px; max-width: 900px; margin: auto; }
-        h1 { text-align: center; color: #1e293b; }
-        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
-        .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
-        .form-row input, .form-row select, .form-row button { padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 14px; }
-        .form-row button { background: #2563eb; color: white; border: none; cursor: pointer; }
-        .form-row button:hover { background: #1d4ed8; }
-        .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
-        .filters label { display: flex; align-items: center; gap: 5px; background: #eef2f6; padding: 4px 12px; border-radius: 20px; cursor: pointer; }
-        .event { border-left: 4px solid; padding: 8px 12px; margin-bottom: 8px; background: #f8fafc; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
-        .event .time { font-weight: bold; color: #334155; }
-        .event .category { font-size: 12px; background: #e2e8f0; padding: 2px 8px; border-radius: 12px; }
-        .delete-btn { background: #ef4444; color: white; border: none; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
-        #eventList { margin-top: 10px; }
-        .no-events { color: #94a3b8; text-align: center; padding: 20px; }
+        /* ----- Глобальные стили ----- */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        body {
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            background: #f4f6f9;
+            padding: 16px 12px 80px 12px; /* снизу место для кнопки + */
+            color: #1e293b;
+        }
+        h1 {
+            font-size: 24px;
+            font-weight: 600;
+            text-align: center;
+            margin: 0 0 12px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .header-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .header-actions button {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 30px;
+            transition: background 0.2s;
+        }
+        .header-actions button:hover {
+            background: #e2e8f0;
+        }
+
+        /* ----- Фильтры (участники) ----- */
+        .filters {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 40px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            justify-content: center;
+        }
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .filter-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: currentColor;
+            cursor: pointer;
+        }
+        .color-dot {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.1);
+            flex-shrink: 0;
+        }
+
+        /* ----- Переключатель режимов ----- */
+        .view-switch {
+            display: flex;
+            justify-content: center;
+            gap: 6px;
+            background: #e9edf3;
+            border-radius: 40px;
+            padding: 4px;
+            margin-bottom: 16px;
+        }
+        .view-switch button {
+            flex: 1;
+            max-width: 120px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 30px;
+            background: transparent;
+            font-weight: 500;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            color: #475569;
+        }
+        .view-switch button.active {
+            background: white;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            color: #0f172a;
+        }
+
+        /* ----- Контейнер недели ----- */
+        .week-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        /* ----- РЕЖИМ "СПИСОК" ----- */
+        .day-list {
+            background: white;
+            border-radius: 20px;
+            padding: 12px 16px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+        }
+        .day-header {
+            font-weight: 600;
+            font-size: 18px;
+            display: flex;
+            justify-content: space-between;
+            border-bottom: 1px solid #eef2f6;
+            padding-bottom: 8px;
+            margin-bottom: 8px;
+        }
+        .day-header .date {
+            font-weight: 400;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .event-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .event-item:last-child {
+            border-bottom: none;
+        }
+        .event-time {
+            font-size: 13px;
+            font-weight: 500;
+            color: #334155;
+            min-width: 80px;
+        }
+        .event-name {
+            flex: 1;
+            font-size: 15px;
+        }
+        .event-participant {
+            font-size: 13px;
+            padding: 2px 12px;
+            border-radius: 30px;
+            background: #f1f5f9;
+            white-space: nowrap;
+        }
+        .event-participant .dot {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+        .empty-day {
+            color: #94a3b8;
+            font-size: 14px;
+            padding: 6px 0;
+            text-align: center;
+        }
+        .delete-event {
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            font-size: 18px;
+            padding: 0 4px;
+        }
+        .delete-event:hover {
+            color: #ef4444;
+        }
+
+        /* ----- РЕЖИМ "СЕТКА" ----- */
+        .grid-wrapper {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -12px; /* чтобы скролл был на всю ширину экрана */
+            padding: 0 12px;
+        }
+        .grid-table {
+            display: grid;
+            grid-template-columns: 50px repeat(7, 1fr);
+            grid-auto-rows: 32px; /* высота одной часовой ячейки */
+            gap: 1px;
+            background: #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            min-width: 600px; /* чтобы на мобилке скроллилась */
+        }
+        .grid-cell {
+            background: white;
+            padding: 2px 4px;
+            font-size: 11px;
+            line-height: 1.2;
+            overflow: hidden;
+            position: relative;
+            min-height: 32px;
+        }
+        .grid-hour-label {
+            background: #f8fafc;
+            font-weight: 500;
+            color: #475569;
+            text-align: center;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .grid-day-header {
+            background: #f1f5f9;
+            font-weight: 600;
+            font-size: 13px;
+            text-align: center;
+            padding: 6px 0;
+        }
+        .grid-event {
+            background: #3b82f6;
+            color: white;
+            border-radius: 4px;
+            padding: 1px 4px;
+            font-size: 10px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            position: absolute;
+            left: 2px;
+            right: 2px;
+            z-index: 2;
+            cursor: default;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .grid-cell-content {
+            position: relative;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ----- Модальное окно настроек ----- */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(2px);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal {
+            background: white;
+            border-radius: 28px;
+            max-width: 450px;
+            width: 100%;
+            padding: 24px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal h2 {
+            font-size: 22px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal h2 button {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #94a3b8;
+        }
+        .modal label {
+            display: block;
+            font-weight: 500;
+            margin: 12px 0 4px;
+            font-size: 14px;
+        }
+        .modal input[type="text"],
+        .modal input[type="datetime-local"] {
+            width: 100%;
+            padding: 10px 14px;
+            border: 1px solid #d1d5db;
+            border-radius: 40px;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+        .modal .color-select {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+        .modal .color-option {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid transparent;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .modal .color-option.selected {
+            border-color: #0f172a;
+            transform: scale(1.1);
+        }
+        .modal .member-list {
+            margin: 16px 0;
+        }
+        .modal .member-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .modal .member-row .color-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+        }
+        .modal .member-row span {
+            flex: 1;
+        }
+        .modal .member-row button {
+            background: none;
+            border: none;
+            color: #ef4444;
+            font-size: 18px;
+            cursor: pointer;
+        }
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 40px;
+            font-size: 16px;
+            font-weight: 500;
+            width: 100%;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+        .btn-secondary {
+            background: #e2e8f0;
+            color: #1e293b;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 40px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+
+        /* ----- Плавающая кнопка добавления ----- */
+        .fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            background: #2563eb;
+            color: white;
+            border: none;
+            font-size: 36px;
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+            cursor: pointer;
+            transition: 0.2s;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .fab:hover {
+            transform: scale(1.05);
+            background: #1d4ed8;
+        }
+
+        /* ----- Адаптив ----- */
+        @media (max-width: 480px) {
+            body { padding: 12px 8px 80px 8px; }
+            .filters { padding: 8px 12px; gap: 4px 10px; }
+            .filter-item { font-size: 13px; }
+            .view-switch button { font-size: 14px; padding: 6px 10px; }
+            .day-header { font-size: 16px; }
+            .event-time { min-width: 60px; font-size: 12px; }
+            .event-name { font-size: 14px; }
+            .modal { padding: 16px; }
+            .grid-table { grid-template-columns: 40px repeat(7, 1fr); grid-auto-rows: 28px; min-width: 480px; }
+            .grid-hour-label { font-size: 10px; }
+            .grid-day-header { font-size: 11px; }
+        }
     </style>
 </head>
 <body>
-    <h1>📅 Планировщик</h1>
 
-    <div class="card">
-        <h3>➕ Добавить событие</h3>
-        <div class="form-row">
-            <input type="text" id="eventName" placeholder="Название" />
-            <input type="datetime-local" id="eventStart" />
-            <input type="datetime-local" id="eventEnd" />
-            <select id="eventCategory">
-                <option value="Работа">👔 Работа</option>
-                <option value="Дети">🧒 Дети</option>
-                <option value="Спорт">⚽ Спорт</option>
-                <option value="Дом">🏠 Дом</option>
-                <option value="Другое">📌 Другое</option>
-            </select>
-            <button id="addBtn">Добавить</button>
-        </div>
-        <div class="form-row">
-            <input type="text" id="eventPerson" placeholder="Кто участвует (необязательно)" style="flex:1;"/>
+    <h1>📅 Семейный план</h1>
+
+    <div class="header-actions">
+        <button onclick="openSettings()" title="Настроить семью">⚙️</button>
+    </div>
+
+    <!-- Фильтр по участникам -->
+    <div class="filters" id="filtersContainer"></div>
+
+    <!-- Переключатель режимов -->
+    <div class="view-switch">
+        <button class="active" data-view="list" onclick="setView('list')">📋 Список</button>
+        <button data-view="grid" onclick="setView('grid')">📊 Сетка</button>
+    </div>
+
+    <!-- Контейнер недели -->
+    <div class="week-container" id="weekContainer"></div>
+
+    <!-- Плавающая кнопка "Добавить событие" -->
+    <button class="fab" onclick="openAddEvent()">＋</button>
+
+    <!-- Модальное окно настроек (участники) -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal">
+            <h2>
+                👨‍👩‍👧‍👦 Семья
+                <button onclick="closeSettings()">✕</button>
+            </h2>
+            <div class="member-list" id="memberList"></div>
+            <label>Добавить участника</label>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="text" id="newMemberName" placeholder="Имя" style="flex:1; padding:10px 14px; border:1px solid #d1d5db; border-radius:40px;" />
+                <div class="color-select" id="colorSelect"></div>
+            </div>
+            <button class="btn-primary" onclick="addMember()" style="margin-top:12px;">➕ Добавить</button>
+            <button class="btn-secondary" onclick="closeSettings()" style="margin-top:8px;">Закрыть</button>
         </div>
     </div>
 
-    <div class="card">
-        <div class="filters" id="filtersContainer">
-            <label><input type="checkbox" value="Работа" checked /> 👔 Работа</label>
-            <label><input type="checkbox" value="Дети" checked /> 🧒 Дети</label>
-            <label><input type="checkbox" value="Спорт" checked /> ⚽ Спорт</label>
-            <label><input type="checkbox" value="Дом" checked /> 🏠 Дом</label>
-            <label><input type="checkbox" value="Другое" checked /> 📌 Другое</label>
+    <!-- Модальное окно добавления события -->
+    <div class="modal-overlay" id="eventModal">
+        <div class="modal">
+            <h2>
+                ➕ Новое событие
+                <button onclick="closeEvent()">✕</button>
+            </h2>
+            <label>Название</label>
+            <input type="text" id="eventName" placeholder="Например: Футбол" />
+
+            <label>Дата и время начала</label>
+            <input type="datetime-local" id="eventStart" />
+
+            <label>Дата и время окончания</label>
+            <input type="datetime-local" id="eventEnd" />
+
+            <label>Участник</label>
+            <select id="eventParticipant" style="width:100%; padding:10px 14px; border-radius:40px; border:1px solid #d1d5db; font-size:16px;"></select>
+
+            <button class="btn-primary" onclick="addEvent()" style="margin-top:16px;">Сохранить</button>
+            <button class="btn-secondary" onclick="closeEvent()" style="margin-top:8px;">Отмена</button>
         </div>
-        <div id="eventList"></div>
     </div>
 
     <script>
-        // --- Работа с localStorage ---
-        function loadEvents() {
-            const data = localStorage.getItem('scheduleEvents');
-            return data ? JSON.parse(data) : [];
+        // ============================================================
+        //  ДАННЫЕ
+        // ============================================================
+
+        // 7 предустановленных цветов
+        const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#22c55e', '#14b8a6'];
+
+        // Загрузка из localStorage
+        function loadData() {
+            const raw = localStorage.getItem('familyPlannerData');
+            if (raw) {
+                try { return JSON.parse(raw); } catch(e) {}
+            }
+            return {
+                members: [],        // { id, name, color }
+                events: []          // { id, name, start (ISO), end (ISO), participantId }
+            };
         }
-        function saveEvents(events) {
-            localStorage.setItem('scheduleEvents', JSON.stringify(events));
+
+        function saveData() {
+            localStorage.setItem('familyPlannerData', JSON.stringify(data));
         }
 
-        // --- Цвета категорий ---
-        const categoryColors = {
-            'Работа': '#3b82f6',
-            'Дети': '#8b5cf6',
-            'Спорт': '#22c55e',
-            'Дом': '#f59e0b',
-            'Другое': '#6b7280'
-        };
+        let data = loadData();
 
-        // --- Рендер списка событий ---
-        function renderEvents() {
-            const events = loadEvents();
-            const list = document.getElementById('eventList');
-            const filters = document.querySelectorAll('#filtersContainer input[type="checkbox"]');
-            const activeCategories = Array.from(filters)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
+        // Вспомогательные функции
+        function generateId() {
+            return Date.now() + '_' + Math.random().toString(36).substr(2, 6);
+        }
 
-            // Сортировка по времени начала
-            events.sort((a, b) => new Date(a.start) - new Date(b.start));
+        function getMember(id) {
+            return data.members.find(m => m.id === id);
+        }
 
-            const filtered = events.filter(e => activeCategories.includes(e.category));
+        function getMemberColor(id) {
+            const m = getMember(id);
+            return m ? m.color : '#94a3b8';
+        }
 
-            if (filtered.length === 0) {
-                list.innerHTML = '<div class="no-events">Нет событий на выбранные категории</div>';
+        function getMemberName(id) {
+            const m = getMember(id);
+            return m ? m.name : 'Неизвестный';
+        }
+
+        // Определяем текущую неделю (пн - вс)
+        function getWeekRange() {
+            const now = new Date();
+            const day = now.getDay(); // 0 - вс, 1 - пн ...
+            const diff = (day === 0 ? 6 : day - 1); // сколько дней от понедельника
+            const monday = new Date(now);
+            monday.setDate(now.getDate() - diff);
+            monday.setHours(0,0,0,0);
+            const sunday = new Date(monday);
+            sunday.setDate(monday.getDate() + 6);
+            sunday.setHours(23,59,59,999);
+            return { monday, sunday };
+        }
+
+        // Получить массив дней недели (пн-вс) с датами
+        function getWeekDays() {
+            const { monday } = getWeekRange();
+            const days = [];
+            for (let i = 0; i < 7; i++) {
+                const d = new Date(monday);
+                d.setDate(monday.getDate() + i);
+                days.push(d);
+            }
+            return days;
+        }
+
+        // Форматирование даты
+        function formatDate(date) {
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        }
+
+        function formatTime(date) {
+            return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // ============================================================
+        //  РЕНДЕРИНГ
+        // ============================================================
+
+        let currentView = 'list'; // 'list' или 'grid'
+
+        function setView(view) {
+            currentView = view;
+            document.querySelectorAll('.view-switch button').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.view === view);
+            });
+            render();
+        }
+
+        function render() {
+            renderFilters();
+            if (currentView === 'list') {
+                renderList();
+            } else {
+                renderGrid();
+            }
+        }
+
+        // ---- Фильтры ----
+        function renderFilters() {
+            const container = document.getElementById('filtersContainer');
+            if (data.members.length === 0) {
+                container.innerHTML = '<span style="color:#94a3b8; font-size:14px;">Добавьте участников в настройках ⚙️</span>';
                 return;
             }
-
-            list.innerHTML = filtered.map((e, index) => {
-                const start = new Date(e.start);
-                const end = new Date(e.end);
-                const dateStr = start.toLocaleDateString('ru-RU');
-                const timeStr = start.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) 
-                                + ' – ' + end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                const person = e.person ? `👤 ${e.person}` : '';
-                return `
-                    <div class="event" style="border-color: ${categoryColors[e.category] || '#6b7280'}">
-                        <div>
-                            <strong>${e.name}</strong>
-                            <span class="time">${dateStr} ${timeStr}</span>
-                            <span class="category">${e.category}</span>
-                            ${person}
-                        </div>
-                        <button class="delete-btn" data-index="${index}">✕</button>
-                    </div>
+            let html = '';
+            data.members.forEach(m => {
+                // состояние чекбокса храним в data-атрибутах или в объекте? лучше в localStorage, но для простоты будем хранить в отдельном объекте фильтров
+                // Но мы будем хранить состояние в свойстве 'hidden' у участника, или отдельно. Сделаем отдельный объект filterState.
+                // Инициализируем, если нет.
+                if (!window.filterState) {
+                    window.filterState = {};
+                    data.members.forEach(m => window.filterState[m.id] = true);
+                }
+                const checked = window.filterState[m.id] !== false; // по умолчанию true
+                html += `
+                    <label class="filter-item">
+                        <input type="checkbox" data-participant="${m.id}" ${checked ? 'checked' : ''} onchange="toggleFilter('${m.id}')" />
+                        <span class="color-dot" style="background:${m.color}"></span>
+                        ${m.name}
+                    </label>
                 `;
-            }).join('');
+            });
+            container.innerHTML = html;
+        }
 
-            // Вешаем обработчики на кнопки удаления
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const idx = parseInt(this.dataset.index);
-                    const events = loadEvents();
-                    // Удаляем по индексу, но индексы соответствуют отфильтрованному массиву, поэтому надо удалять по реальному индексу.
-                    // Чтобы не усложнять, будем удалять по ID (добавим уникальный id при создании)
-                    // Переделаем: при создании будем давать уникальный id.
-                    // Но для простоты перезагрузим список и удалим по совпадению полей (лучше добавить id).
-                    // Сделаем проще: перепишем генерацию с использованием id.
+        function toggleFilter(id) {
+            if (!window.filterState) window.filterState = {};
+            window.filterState[id] = !window.filterState[id];
+            render();
+        }
+
+        function isFilteredOut(participantId) {
+            if (!window.filterState) return false;
+            return window.filterState[participantId] === false;
+        }
+
+        // ---- Режим "Список" ----
+        function renderList() {
+            const container = document.getElementById('weekContainer');
+            const days = getWeekDays();
+            const events = getEventsForWeek();
+
+            let html = '';
+            days.forEach((date, index) => {
+                const dayEvents = events.filter(e => {
+                    const eDate = new Date(e.start);
+                    return eDate.toDateString() === date.toDateString();
                 });
+                // сортировка по времени
+                dayEvents.sort((a,b) => new Date(a.start) - new Date(b.start));
+
+                html += `<div class="day-list">`;
+                html += `<div class="day-header">${getDayName(index)} <span class="date">${formatDate(date)}</span></div>`;
+
+                if (dayEvents.length === 0) {
+                    html += `<div class="empty-day">Нет событий</div>`;
+                } else {
+                    dayEvents.forEach(ev => {
+                        const participant = getMember(ev.participantId);
+                        const color = participant ? participant.color : '#94a3b8';
+                        const name = participant ? participant.name : 'Без участника';
+                        const start = new Date(ev.start);
+                        const end = new Date(ev.end);
+                        const timeStr = formatTime(start) + ' – ' + formatTime(end);
+                        html += `
+                            <div class="event-item">
+                                <span class="event-time">${timeStr}</span>
+                                <span class="event-name">${ev.name}</span>
+                                <span class="event-participant">
+                                    <span class="dot" style="background:${color}"></span>
+                                    ${name}
+                                </span>
+                                <button class="delete-event" onclick="deleteEvent('${ev.id}')">✕</button>
+                            </div>
+                        `;
+                    });
+                }
+                html += `</div>`;
+            });
+            container.innerHTML = html;
+        }
+
+        function getDayName(index) {
+            const names = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
+            return names[index];
+        }
+
+        // ---- Режим "Сетка" ----
+        function renderGrid() {
+            const container = document.getElementById('weekContainer');
+            const days = getWeekDays();
+            const events = getEventsForWeek();
+
+            // Построим карту событий по дням и часам
+            // Для каждой ячейки (день, час) будем хранить массив событий, попадающих в этот час
+            // Событие занимает несколько часов, если длится более часа.
+            // Упростим: будем отображать событие в первом часе, а длительность покажем размером.
+            // Для сетки используем абсолютное позиционирование внутри ячейки дня.
+            // Каждый день - колонка, внутри контейнер с высотой 24*32px = 768px (или динамически)
+            // Мы будем рисовать сетку с помощью grid, но события будем позиционировать абсолютно внутри ячейки дня.
+            // Чтобы не усложнять, мы можем нарисовать грид с ячейками для каждого часа, но события будут занимать несколько ячеек.
+            // Для простоты я сделаю так: каждый день - это колонка, и внутри каждой колонки будет контейнер с position:relative и высотой, равной 24 * 32px.
+            // События будут позиционироваться абсолютно с top и height, рассчитанными на основе времени.
+            // Но это требует расчетов. Чтобы код был понятным, я сделаю чуть проще: в каждой ячейке часа будет отображаться название события, если событие попадает на этот час.
+            // Но события могут занимать несколько часов, и они будут повторяться в каждой ячейке – некрасиво.
+            // Поэтому я выберу подход с абсолютным позиционированием внутри колонки.
+
+            // Я построю HTML: контейнер .grid-wrapper с горизонтальным скроллом.
+            // Внутри таблица .grid-table с grid-template-columns: 50px repeat(7, 1fr) и grid-auto-rows: 32px.
+            // Но для абсолютного позиционирования в колонках нужно, чтобы каждая колонка была отдельным контейнером.
+            // Это сложно в grid. Проще сделать flex-контейнер для дней, внутри каждого дня - контейнер с относительным позиционированием и высотой.
+
+            // Сделаем проще: вместо сетки с часами, сделаем для каждого дня вертикальную временную шкалу с событиями, расположенными по времени.
+            // Это похоже на список, но с визуализацией времени. Но пользователь просил "сетку по часам".
+            // Я все же реализую грид с ячейками, но для каждого события будем рисовать блок, который занимает нужное количество строк.
+            // Для этого в grid можно использовать grid-row: span N. Но нам нужно определить начальную строку.
+
+            // Я решу: буду использовать grid, где каждая строка - час. Для каждого события я вычисляю начальную строку (час начала) и количество строк (длительность в часах, округленно).
+            // Тогда событие будет занимать несколько ячеек. Но в ячейке может быть несколько событий, они будут накладываться.
+            // Для простоты я буду отображать только одно событие на ячейку (самое первое), что не идеально.
+
+            // Учитывая, что это прототип, я сделаю так: сетка с ячейками, в каждой ячейке показываем название события, если оно начинается в этот час.
+            // То есть событие отображается только в ячейке начала, а не на всем протяжении. Но это не "по часам" в полном смысле.
+            // Вместо этого я сделаю отдельный вид "таймлайн" для каждого дня, где события отображаются как полосы на временной шкале.
+            // Это будет выглядеть как классический календарь.
+
+            // Я переделаю: буду использовать flex-контейнер для дней, каждый день - колонка с фиксированной шириной (например, 100px).
+            // Внутри колонки - вертикальная шкала с разметкой часов (слева или внутри). События позиционируются абсолютно.
+
+            // Давайте так и сделаем. Это будет красиво и понятно.
+
+            // Создадим контейнер с overflow-x: auto.
+            let html = `<div class="grid-wrapper"><div style="display:flex; gap:4px; min-width:700px;">`;
+
+            days.forEach((date, index) => {
+                const dayEvents = events.filter(e => {
+                    const eDate = new Date(e.start);
+                    return eDate.toDateString() === date.toDateString();
+                });
+
+                html += `<div style="flex:1; min-width:80px; position:relative; background:#f8fafc; border-radius:12px; padding:0 4px 4px 4px;">`;
+                html += `<div style="text-align:center; font-weight:600; padding:8px 0; background:white; border-radius:12px 12px 0 0;">${getDayName(index)}<br><span style="font-weight:400; font-size:12px; color:#64748b;">${formatDate(date)}</span></div>`;
+                // Вертикальная шкала: контейнер высотой 24*32px = 768px, можно уменьшить.
+                const hourHeight = 32;
+                const totalHeight = 24 * hourHeight;
+                html += `<div style="position:relative; height:${totalHeight}px; background:white; border-radius:0 0 12px 12px; overflow:hidden;">`;
+
+                // Рисуем сетку часов (серые линии) для красоты
+                for (let h = 0; h < 24; h++) {
+                    const top = h * hourHeight;
+                    html += `<div style="position:absolute; top:${top}px; left:0; right:0; border-top:1px solid #eef2f6; height:${hourHeight}px; display:flex; align-items:center; padding-left:4px; font-size:10px; color:#94a3b8;">${h}:00</div>`;
+                }
+
+                // Теперь события
+                dayEvents.forEach(ev => {
+                    const start = new Date(ev.start);
+                    const end = new Date(ev.end);
+                    const startHour = start.getHours() + start.getMinutes() / 60;
+                    const endHour = end.getHours() + end.getMinutes() / 60;
+                    const duration = endHour - startHour;
+                    if (duration <= 0) return;
+                    const top = startHour * hourHeight;
+                    const height = duration * hourHeight;
+                    const color = getMemberColor(ev.participantId);
+                    const name = getMemberName(ev.participantId);
+                    html += `
+                        <div style="position:absolute; top:${top}px; left:4px; right:4px; height:${height}px; background:${color}; border-radius:6px; padding:2px 6px; color:white; font-size:11px; overflow:hidden; box-shadow:0 1px 4px rgba(0,0,0,0.1); display:flex; flex-direction:column; justify-content:center; cursor:default; z-index:5;">
+                            <strong style="font-size:11px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${ev.name}</strong>
+                            <span style="font-size:9px; opacity:0.9;">${formatTime(start)} – ${formatTime(end)}</span>
+                            <span style="font-size:9px; opacity:0.8;">${name}</span>
+                        </div>
+                    `;
+                });
+
+                html += `</div></div>`; // закрываем шкалу и колонку
+            });
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+        }
+
+        // Получить события за текущую неделю с учетом фильтра
+        function getEventsForWeek() {
+            const { monday, sunday } = getWeekRange();
+            return data.events.filter(ev => {
+                const d = new Date(ev.start);
+                if (d < monday || d > sunday) return false;
+                if (isFilteredOut(ev.participantId)) return false;
+                return true;
             });
         }
 
-        // --- Добавление события ---
+        // ============================================================
+        //  ДОБАВЛЕНИЕ / УДАЛЕНИЕ СОБЫТИЙ
+        // ============================================================
+
+        function openAddEvent() {
+            const modal = document.getElementById('eventModal');
+            modal.classList.add('active');
+            // Заполним select участников
+            const select = document.getElementById('eventParticipant');
+            select.innerHTML = '';
+            if (data.members.length === 0) {
+                select.innerHTML = '<option value="">Сначала добавьте участников в настройках</option>';
+            } else {
+                data.members.forEach(m => {
+                    const opt = document.createElement('option');
+                    opt.value = m.id;
+                    opt.textContent = m.name;
+                    select.appendChild(opt);
+                });
+            }
+            // Установим datetime-local по умолчанию на текущий час
+            const now = new Date();
+            const startInput = document.getElementById('eventStart');
+            const endInput = document.getElementById('eventEnd');
+            const localISOTime = (date) => {
+                const offset = date.getTimezoneOffset();
+                const local = new Date(date.getTime() - offset * 60000);
+                return local.toISOString().slice(0, 16);
+            };
+            startInput.value = localISOTime(now);
+            const end = new Date(now);
+            end.setHours(now.getHours() + 1);
+            endInput.value = localISOTime(end);
+            document.getElementById('eventName').value = '';
+        }
+
+        function closeEvent() {
+            document.getElementById('eventModal').classList.remove('active');
+        }
+
         function addEvent() {
             const name = document.getElementById('eventName').value.trim();
             const start = document.getElementById('eventStart').value;
             const end = document.getElementById('eventEnd').value;
-            const category = document.getElementById('eventCategory').value;
-            const person = document.getElementById('eventPerson').value.trim();
+            const participantId = document.getElementById('eventParticipant').value;
 
-            if (!name || !start || !end) {
-                alert('Заполните название, время начала и конца!');
+            if (!name || !start || !end || !participantId) {
+                alert('Заполните все поля!');
                 return;
             }
             if (new Date(start) >= new Date(end)) {
-                alert('Время окончания должно быть позже времени начала');
+                alert('Время окончания должно быть позже времени начала.');
                 return;
             }
 
-            const events = loadEvents();
-            const newEvent = {
-                id: Date.now() + Math.random(), // уникальный идентификатор
+            data.events.push({
+                id: generateId(),
                 name,
                 start,
                 end,
-                category,
-                person
-            };
-            events.push(newEvent);
-            saveEvents(events);
-            renderEvents();
-
-            // Очистка полей
-            document.getElementById('eventName').value = '';
-            document.getElementById('eventStart').value = '';
-            document.getElementById('eventEnd').value = '';
-            document.getElementById('eventPerson').value = '';
+                participantId
+            });
+            saveData();
+            closeEvent();
+            render();
         }
 
-        // --- Обработчик удаления (переписываем рендер с id) ---
-        // Обновим функцию renderEvents с учетом id
-        // (полный код будет чуть длиннее, но я покажу основной принцип)
-        // Для краткости я перепишу функцию удаления через делегирование.
+        function deleteEvent(id) {
+            if (!confirm('Удалить событие?')) return;
+            data.events = data.events.filter(e => e.id !== id);
+            saveData();
+            render();
+        }
 
-        // Новая версия renderEvents с обработкой удаления через клик по контейнеру
-        function renderEvents() {
-            const events = loadEvents();
-            const list = document.getElementById('eventList');
-            const filters = document.querySelectorAll('#filtersContainer input[type="checkbox"]');
-            const activeCategories = Array.from(filters)
-                .filter(cb => cb.checked)
-                .map(cb => cb.value);
+        // ============================================================
+        //  НАСТРОЙКИ СЕМЬИ (участники)
+        // ============================================================
 
-            events.sort((a, b) => new Date(a.start) - new Date(b.start));
-            const filtered = events.filter(e => activeCategories.includes(e.category));
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+            renderMembers();
+            renderColorOptions();
+        }
 
-            if (filtered.length === 0) {
-                list.innerHTML = '<div class="no-events">Нет событий на выбранные категории</div>';
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+
+        function renderMembers() {
+            const container = document.getElementById('memberList');
+            if (data.members.length === 0) {
+                container.innerHTML = '<p style="color:#94a3b8;">Пока нет участников. Добавьте первого!</p>';
                 return;
             }
-
-            list.innerHTML = filtered.map(e => {
-                const start = new Date(e.start);
-                const end = new Date(e.end);
-                const dateStr = start.toLocaleDateString('ru-RU');
-                const timeStr = start.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) 
-                                + ' – ' + end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-                const person = e.person ? `👤 ${e.person}` : '';
-                return `
-                    <div class="event" style="border-color: ${categoryColors[e.category] || '#6b7280'}" data-id="${e.id}">
-                        <div>
-                            <strong>${e.name}</strong>
-                            <span class="time">${dateStr} ${timeStr}</span>
-                            <span class="category">${e.category}</span>
-                            ${person}
-                        </div>
-                        <button class="delete-btn" data-id="${e.id}">✕</button>
+            let html = '';
+            data.members.forEach(m => {
+                html += `
+                    <div class="member-row">
+                        <span class="color-dot" style="background:${m.color}"></span>
+                        <span>${m.name}</span>
+                        <button onclick="removeMember('${m.id}')">✕</button>
                     </div>
                 `;
-            }).join('');
+            });
+            container.innerHTML = html;
+        }
 
-            // Удаление через делегирование (клик по кнопке)
-            list.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    const id = this.dataset.id;
-                    if (confirm('Удалить событие?')) {
-                        let events = loadEvents();
-                        events = events.filter(ev => ev.id != id);
-                        saveEvents(events);
-                        renderEvents();
-                    }
-                });
+        let selectedColor = COLORS[0];
+
+        function renderColorOptions() {
+            const container = document.getElementById('colorSelect');
+            container.innerHTML = '';
+            COLORS.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'color-option' + (c === selectedColor ? ' selected' : '');
+                div.style.background = c;
+                div.dataset.color = c;
+                div.onclick = function() {
+                    document.querySelectorAll('.color-option').forEach(el => el.classList.remove('selected'));
+                    this.classList.add('selected');
+                    selectedColor = this.dataset.color;
+                };
+                container.appendChild(div);
             });
         }
 
-        // --- Инициализация ---
-        document.getElementById('addBtn').addEventListener('click', addEvent);
+        function addMember() {
+            const input = document.getElementById('newMemberName');
+            const name = input.value.trim();
+            if (!name) {
+                alert('Введите имя');
+                return;
+            }
+            if (data.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
+                alert('Участник с таким именем уже есть');
+                return;
+            }
+            data.members.push({
+                id: generateId(),
+                name: name,
+                color: selectedColor
+            });
+            saveData();
+            input.value = '';
+            // сбросить выбор цвета на первый
+            selectedColor = COLORS[0];
+            renderColorOptions();
+            renderMembers();
+            render(); // обновить фильтры и основное
+        }
 
-        // Фильтры – перерендер при изменении
-        document.querySelectorAll('#filtersContainer input[type="checkbox"]').forEach(cb => {
-            cb.addEventListener('change', renderEvents);
-        });
+        function removeMember(id) {
+            if (!confirm('Удалить участника? Все его события останутся, но он будет отображаться как "Неизвестный".')) return;
+            // Не удаляем события, просто убираем участника
+            data.members = data.members.filter(m => m.id !== id);
+            // Если есть события с этим участником, они останутся, но при рендере будут показываться как "Неизвестный"
+            saveData();
+            renderMembers();
+            render();
+        }
 
-        // Первый рендер
-        renderEvents();
+        // ============================================================
+        //  ИНИЦИАЛИЗАЦИЯ
+        // ============================================================
+
+        // Инициализируем фильтры (все включены)
+        window.filterState = {};
+        data.members.forEach(m => window.filterState[m.id] = true);
+
+        render();
     </script>
 </body>
 </html>
