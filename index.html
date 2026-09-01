@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Семейный планировщик</title>
     <style>
-        /* ----- CSS-переменные (те же, что были) ----- */
+        /* ----- CSS-переменные ----- */
         :root {
             --bg: #f4f6f9;
             --card-bg: #ffffff;
@@ -27,6 +27,8 @@
             --warning-bg: #fef3c7;
             --warning-text: #92400e;
             --month-day-bg: #ffffff;
+            --mode-btn-bg: #e9edf3;
+            --mode-btn-active: #ffffff;
         }
         body.dark {
             --bg: #0f172a;
@@ -49,6 +51,8 @@
             --warning-bg: #78350f;
             --warning-text: #fbbf24;
             --month-day-bg: #1e293b;
+            --mode-btn-bg: #334155;
+            --mode-btn-active: #0f172a;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         body {
@@ -156,7 +160,6 @@
             color: var(--text);
         }
         .week-container { display: flex; flex-direction: column; gap: 12px; touch-action: pan-y; }
-        /* Список (без изменений) */
         .day-list {
             background: var(--day-bg); border-radius: 20px; padding: 12px 16px;
             box-shadow: var(--shadow); transition: background 0.2s;
@@ -192,7 +195,7 @@
         .event-actions button:hover { color: var(--fab-bg); }
         .event-actions .delete-event:hover { color: #ef4444; }
 
-        /* Сетка (недельная) */
+        /* Сетка */
         .grid-wrapper {
             overflow-x: auto; -webkit-overflow-scrolling: touch;
             margin: 0 -12px; padding: 0 12px; touch-action: pan-y;
@@ -248,7 +251,7 @@
         .grid-event-block .time { font-size: 9px; opacity: 0.9; }
         .grid-event-block .participant { font-size: 9px; opacity: 0.8; }
 
-        /* Месячный вид */
+        /* Месяц */
         .month-grid {
             background: var(--card-bg); border-radius: 20px; padding: 12px;
             box-shadow: var(--shadow);
@@ -283,7 +286,7 @@
         }
         .month-day.today { border-color: var(--fab-bg); background: var(--switch-bg); }
 
-        /* Модалки (общие) */
+        /* Модалки */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: rgba(0,0,0,0.4);
@@ -376,10 +379,26 @@
         }
         .fab:hover { transform: scale(1.05); }
 
-        /* Аналитика */
-        .analytics-result {
-            margin-top: 16px;
+        /* Переключатель режимов в модалке события */
+        .mode-switch {
+            display: flex; gap: 6px; background: var(--mode-btn-bg);
+            border-radius: 40px; padding: 4px; margin-bottom: 16px;
         }
+        .mode-btn {
+            flex: 1; padding: 8px 12px; border: none; border-radius: 30px;
+            background: transparent; font-weight: 500; font-size: 14px;
+            cursor: pointer; transition: 0.2s; color: var(--text-secondary);
+        }
+        .mode-btn.active {
+            background: var(--mode-btn-active); box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            color: var(--text);
+        }
+        #textFields textarea {
+            border-radius: 20px; resize: vertical; min-height: 80px;
+        }
+
+        /* Аналитика */
+        .analytics-result { margin-top: 16px; }
         .analytics-table {
             width: 100%; border-collapse: collapse; margin-top: 8px;
         }
@@ -453,37 +472,54 @@
     <div class="modal-overlay" id="eventModal">
         <div class="modal">
             <h2><span id="eventModalTitle">➕ Новое событие</span><button onclick="closeEvent()">✕</button></h2>
-            <label>Название</label>
-            <input type="text" id="eventName" placeholder="Например: Футбол" />
-            <label>Начало</label>
-            <input type="datetime-local" id="eventStart" />
-            <label>Окончание</label>
-            <input type="datetime-local" id="eventEnd" />
-            <label>Участник</label>
-            <select id="eventParticipant"></select>
-            <label>Повторение</label>
-            <div class="recurrence-group">
-                <select id="recurrenceType">
-                    <option value="none">Нет</option>
-                    <option value="daily">Ежедневно</option>
-                    <option value="weekly">Еженедельно</option>
-                    <option value="weekly_workdays">Рабочие дни (5/2)</option>
-                    <option value="monthly">Ежемесячно</option>
-                    <option value="custom">Каждые N дней</option>
-                </select>
-                <input type="number" id="recurrenceInterval" value="1" min="1" style="width:70px;" />
-                <span id="intervalLabel">дн.</span>
+            <!-- Переключатель режимов -->
+            <div class="mode-switch">
+                <button class="mode-btn active" data-mode="manual" onclick="switchEventMode('manual')">✏️ Вручную</button>
+                <button class="mode-btn" data-mode="text" onclick="switchEventMode('text')">📝 Текстом</button>
             </div>
-            <label>Дата окончания повторения (необязательно)</label>
-            <input type="date" id="recurrenceUntil" />
-            <div class="checkbox-row">
-                <input type="checkbox" id="allowOverlap" />
-                <label for="allowOverlap">✅ Разрешено пересечение (не считать конфликтом)</label>
+            <!-- Режим "Вручную" -->
+            <div id="manualFields">
+                <label>Название</label>
+                <input type="text" id="eventName" placeholder="Например: Футбол" />
+                <label>Начало</label>
+                <input type="datetime-local" id="eventStart" />
+                <label>Окончание</label>
+                <input type="datetime-local" id="eventEnd" />
+                <label>Участник</label>
+                <select id="eventParticipant"></select>
+                <label>Повторение</label>
+                <div class="recurrence-group">
+                    <select id="recurrenceType">
+                        <option value="none">Нет</option>
+                        <option value="daily">Ежедневно</option>
+                        <option value="weekly">Еженедельно</option>
+                        <option value="weekly_workdays">Рабочие дни (5/2)</option>
+                        <option value="monthly">Ежемесячно</option>
+                        <option value="custom">Каждые N дней</option>
+                    </select>
+                    <input type="number" id="recurrenceInterval" value="1" min="1" style="width:70px;" />
+                    <span id="intervalLabel">дн.</span>
+                </div>
+                <label>Дата окончания повторения (необязательно)</label>
+                <input type="date" id="recurrenceUntil" />
+                <div class="checkbox-row">
+                    <input type="checkbox" id="allowOverlap" />
+                    <label for="allowOverlap">✅ Разрешено пересечение (не считать конфликтом)</label>
+                </div>
+                <label>Заметки</label>
+                <textarea id="eventNotes" placeholder="Дополнительная информация..." rows="2"></textarea>
             </div>
-            <label>Заметки</label>
-            <textarea id="eventNotes" placeholder="Дополнительная информация..." rows="2"></textarea>
+            <!-- Режим "Текстом" -->
+            <div id="textFields" style="display:none;">
+                <label>Введите описание события</label>
+                <textarea id="eventTextInput" placeholder="Например: Ужин с Аней завтра в 19:00" rows="3"></textarea>
+                <button class="btn-primary" onclick="parseAndFillEvent()">🔍 Распознать</button>
+                <p style="font-size:13px; color:var(--text-secondary); margin-top:8px;">
+                    Поддерживается: время (19:00, 7 вечера), дата (сегодня, завтра, пятница, 20 мая), участник (с Аней).
+                </p>
+            </div>
             <input type="hidden" id="editingEventId" value="" />
-            <button class="btn-primary" onclick="saveEvent()" id="saveEventBtn">Сохранить</button>
+            <button class="btn-primary" onclick="saveEvent()" id="saveEventBtn" style="margin-top:12px;">Сохранить</button>
             <button class="btn-secondary" onclick="closeEvent()" style="margin-top:8px;">Отмена</button>
         </div>
     </div>
@@ -548,10 +584,11 @@
 
         let filterState = {};
         data.members.forEach(m => filterState[m.id] = true);
-        let periodOffset = 0; // для недели и месяца
+        let periodOffset = 0;
         let currentView = 'list';
         let currentTheme = 'auto';
         let pendingEvent = null;
+        let currentEventMode = 'manual'; // 'manual' или 'text'
 
         function generateId() { return Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
         function getMember(id) { return data.members.find(m => m.id === id); }
@@ -673,7 +710,6 @@
             while (current <= end) {
                 const events = getEventsForDate(current);
                 events.forEach(ev => {
-                    // Обрезаем по периоду
                     let evStart = new Date(ev.start);
                     let evEnd = new Date(ev.end);
                     if (evStart < startDate) evStart = startDate;
@@ -758,7 +794,7 @@
             return filterState[participantId] === false;
         }
 
-        // ----- СПИСОК (недельный) -----
+        // ----- СПИСОК -----
         function renderList() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(periodOffset);
@@ -911,14 +947,13 @@
             containerEl.removeEventListener('touchend', onSwipeEnd);
         }
 
-        // ----- МЕСЯЧНЫЙ ВИД -----
+        // ----- МЕСЯЦ -----
         function renderMonth() {
             const container = document.getElementById('weekContainer');
             const { first, last } = getMonthRange(periodOffset);
             const start = new Date(first);
             start.setDate(1);
-            // Смещение до понедельника
-            let startDay = start.getDay(); // 0-вс, 1-пн...
+            let startDay = start.getDay();
             const offset = (startDay === 0 ? 6 : startDay - 1);
             start.setDate(start.getDate() - offset);
 
@@ -957,7 +992,6 @@
 
             html += `</div></div>`;
             container.innerHTML = html;
-            // Отключаем свайп для месяца
             const containerEl = document.getElementById('weekContainer');
             containerEl.removeEventListener('touchstart', onSwipeStart);
             containerEl.removeEventListener('touchmove', onSwipeMove);
@@ -996,7 +1030,7 @@
         function closeDayEvents() { closeModal('dayEventsModal'); }
 
         // ============================================================
-        //  DRAG & DROP (только сетка)
+        //  DRAG & DROP (сетка)
         // ============================================================
         let dragData = null, dragClone = null, dragEventId = null, dragDuration = 0;
         function initDragAndDrop() {
@@ -1171,12 +1205,221 @@
         //  НАВИГАЦИЯ
         // ============================================================
         function changePeriod(delta) {
-            if (currentView === 'month') {
-                periodOffset += delta;
-            } else {
-                periodOffset += delta;
-            }
+            periodOffset += delta;
             render();
+        }
+
+        // ============================================================
+        //  ПАРСЕР ТЕКСТОВОГО ВВОДА
+        // ============================================================
+        function parseAndFillEvent() {
+            const text = document.getElementById('eventTextInput').value.trim();
+            if (!text) {
+                alert('Введите описание события');
+                return;
+            }
+
+            // Парсим
+            let parsed = parseEventText(text);
+            if (!parsed) {
+                alert('Не удалось распознать описание. Попробуйте изменить фразу.\nПример: "Ужин с Аней завтра в 19:00"');
+                return;
+            }
+
+            // Заполняем поля вручную
+            if (parsed.name) document.getElementById('eventName').value = parsed.name;
+            if (parsed.start) document.getElementById('eventStart').value = parsed.start;
+            if (parsed.end) document.getElementById('eventEnd').value = parsed.end;
+            if (parsed.participantId) {
+                document.getElementById('eventParticipant').value = parsed.participantId;
+            } else if (parsed.participantName) {
+                // Попробуем найти участника по имени
+                const members = data.members;
+                let found = members.find(m => m.name.toLowerCase() === parsed.participantName.toLowerCase());
+                if (found) {
+                    document.getElementById('eventParticipant').value = found.id;
+                } else {
+                    // Если не нашли, оставляем как есть
+                }
+            }
+
+            // Переключаемся на ручной режим
+            switchEventMode('manual');
+            // Обновляем поля (если нужно)
+            // Уведомление
+            alert('Событие распознано! Проверьте и сохраните.');
+        }
+
+        function parseEventText(text) {
+            // Убираем лишние пробелы
+            text = text.replace(/\s+/g, ' ').trim();
+
+            let result = {
+                name: '',
+                start: null,
+                end: null,
+                participantId: null,
+                participantName: ''
+            };
+
+            // 1. Извлекаем время (первое найденное)
+            let timeMatch = null;
+            // Ищем "в 19:00", "в 19:00", "в 7 вечера", "в 7 утра"
+            let timeRegex = /(?:в\s*)?(\d{1,2}):(\d{2})\s*(?:[уа])?/i;
+            let match = text.match(timeRegex);
+            if (match) {
+                let hours = parseInt(match[1]);
+                let minutes = parseInt(match[2]);
+                if (hours < 24 && minutes < 60) {
+                    timeMatch = { hours, minutes };
+                    text = text.replace(match[0], '').trim();
+                }
+            } else {
+                // Попробуем "в 7 вечера" -> 19:00
+                let eveningMatch = text.match(/в\s*(\d{1,2})\s*вечера/i);
+                if (eveningMatch) {
+                    let h = parseInt(eveningMatch[1]);
+                    if (h >= 1 && h <= 12) h += 12;
+                    if (h < 24) {
+                        timeMatch = { hours: h, minutes: 0 };
+                        text = text.replace(eveningMatch[0], '').trim();
+                    }
+                } else {
+                    let morningMatch = text.match(/в\s*(\d{1,2})\s*утра/i);
+                    if (morningMatch) {
+                        let h = parseInt(morningMatch[1]);
+                        if (h >= 1 && h <= 12) {
+                            // если меньше 12, оставляем как есть (утро)
+                        }
+                        if (h < 24) {
+                            timeMatch = { hours: h, minutes: 0 };
+                            text = text.replace(morningMatch[0], '').trim();
+                        }
+                    }
+                }
+            }
+
+            // 2. Извлекаем дату
+            let dateObj = null;
+            let dateRegex = /(сегодня|завтра|послезавтра)/i;
+            let dateMatch = text.match(dateRegex);
+            if (dateMatch) {
+                let keyword = dateMatch[0].toLowerCase();
+                let now = new Date();
+                let target = new Date(now);
+                if (keyword === 'сегодня') {
+                    // остаётся сегодня
+                } else if (keyword === 'завтра') {
+                    target.setDate(now.getDate() + 1);
+                } else if (keyword === 'послезавтра') {
+                    target.setDate(now.getDate() + 2);
+                }
+                dateObj = target;
+                text = text.replace(dateMatch[0], '').trim();
+            } else {
+                // Дни недели: "в пятницу", "в понедельник"
+                let days = ['понедельник','вторник','среда','четверг','пятница','суббота','воскресенье'];
+                let dayRegex = new RegExp('(?:в\\s*)?(' + days.join('|') + ')', 'i');
+                let dayMatch = text.match(dayRegex);
+                if (dayMatch) {
+                    let dayName = dayMatch[1].toLowerCase();
+                    let now = new Date();
+                    let target = new Date(now);
+                    let dayIndex = days.indexOf(dayName);
+                    let currentDay = now.getDay(); // 0-вс, 1-пн...
+                    let targetDay = (dayIndex === 0 ? 1 : dayIndex + 1); // пн=1, вс=0
+                    // Вычисляем ближайший такой день (если сегодня такой же, то сегодня)
+                    let diff = targetDay - currentDay;
+                    if (diff < 0) diff += 7;
+                    if (diff === 0 && now.getHours() >= 12) {
+                        // если сегодня уже прошло полдень, то считаем, что имеется в виду следующий такой день
+                        diff = 7;
+                    }
+                    target.setDate(now.getDate() + diff);
+                    dateObj = target;
+                    text = text.replace(dayMatch[0], '').trim();
+                } else {
+                    // Конкретная дата: "20 мая", "05.06"
+                    let dateNumRegex = /(\d{1,2})\s*(?:мая|июня|июля|августа|сентября|октября|ноября|декабря|января|февраля|марта|апреля)/i;
+                    let dateNumMatch = text.match(dateNumRegex);
+                    if (dateNumMatch) {
+                        let day = parseInt(dateNumMatch[1]);
+                        let monthNames = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+                        let monthStr = dateNumMatch[2].toLowerCase();
+                        let monthIndex = monthNames.indexOf(monthStr);
+                        if (monthIndex !== -1) {
+                            let now = new Date();
+                            let year = now.getFullYear();
+                            let target = new Date(year, monthIndex, day);
+                            if (target < now) {
+                                target.setFullYear(year + 1);
+                            }
+                            dateObj = target;
+                            text = text.replace(dateNumMatch[0], '').trim();
+                        }
+                    } else {
+                        // "05.06" или "05/06"
+                        let dotMatch = text.match(/(\d{1,2})[\/\.](\d{1,2})/);
+                        if (dotMatch) {
+                            let day = parseInt(dotMatch[1]);
+                            let month = parseInt(dotMatch[2]) - 1;
+                            let now = new Date();
+                            let year = now.getFullYear();
+                            let target = new Date(year, month, day);
+                            if (target < now) {
+                                target.setFullYear(year + 1);
+                            }
+                            dateObj = target;
+                            text = text.replace(dotMatch[0], '').trim();
+                        }
+                    }
+                }
+            }
+
+            // 3. Извлекаем участника "с Аней", "со мной"
+            let participantName = '';
+            let participantMatch = text.match(/(?:с|со)\s+([А-Яа-яЁё]+)/i);
+            if (participantMatch) {
+                participantName = participantMatch[1];
+                text = text.replace(participantMatch[0], '').trim();
+            }
+
+            // 4. Оставшийся текст - название
+            let name = text.trim();
+            if (!name) {
+                // если название пустое, возьмём что-то
+                name = 'Событие';
+            }
+
+            // Формируем результат
+            let now = new Date();
+            let startDate = dateObj ? new Date(dateObj) : new Date(now);
+            if (timeMatch) {
+                startDate.setHours(timeMatch.hours, timeMatch.minutes, 0, 0);
+            } else {
+                startDate.setHours(now.getHours() + 1, 0, 0, 0);
+            }
+            let endDate = new Date(startDate);
+            endDate.setHours(startDate.getHours() + 1); // по умолчанию 1 час
+
+            result.name = name;
+            result.start = toLocalDatetime(startDate);
+            result.end = toLocalDatetime(endDate);
+            result.participantName = participantName;
+
+            return result;
+        }
+
+        // ============================================================
+        //  РЕЖИМЫ ВВОДА В МОДАЛКЕ
+        // ============================================================
+        function switchEventMode(mode) {
+            currentEventMode = mode;
+            document.querySelectorAll('.mode-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.mode === mode);
+            });
+            document.getElementById('manualFields').style.display = (mode === 'manual') ? 'block' : 'none';
+            document.getElementById('textFields').style.display = (mode === 'text') ? 'block' : 'none';
         }
 
         // ============================================================
@@ -1188,6 +1431,7 @@
             document.getElementById('saveEventBtn').textContent = 'Сохранить';
             document.getElementById('eventName').value = '';
             document.getElementById('eventNotes').value = '';
+            document.getElementById('eventTextInput').value = '';
             const now = new Date();
             document.getElementById('eventStart').value = toLocalDatetime(now);
             const end = new Date(now);
@@ -1198,6 +1442,8 @@
             document.getElementById('recurrenceUntil').value = '';
             document.getElementById('allowOverlap').checked = false;
             populateParticipantSelect();
+            // Сбрасываем режим на "Вручную"
+            switchEventMode('manual');
             openModal('eventModal');
         }
 
@@ -1207,6 +1453,7 @@
             document.getElementById('eventModalTitle').textContent = '✎ Редактировать событие';
             document.getElementById('editingEventId').value = eventId;
             document.getElementById('saveEventBtn').textContent = 'Обновить';
+            document.getElementById('eventTextInput').value = '';
 
             const start = new Date(ev.start);
             const end = new Date(ev.end);
@@ -1227,6 +1474,7 @@
                 document.getElementById('recurrenceUntil').value = '';
             }
             populateParticipantSelect();
+            switchEventMode('manual');
             openModal('eventModal');
         }
 
@@ -1396,7 +1644,6 @@
         //  АНАЛИТИКА
         // ============================================================
         function openAnalytics() {
-            // Заполняем селект участников
             const select = document.getElementById('analyticsParticipant');
             select.innerHTML = '<option value="all">Все</option>';
             data.members.forEach(m => {
@@ -1405,7 +1652,6 @@
                 opt.textContent = m.name;
                 select.appendChild(opt);
             });
-            // Устанавливаем период по умолчанию – последние 30 дней
             const end = new Date();
             const start = new Date();
             start.setDate(start.getDate() - 30);
@@ -1436,18 +1682,15 @@
                 return;
             }
 
-            // Получаем все события за период
             let events = getEventsForPeriod(start, end);
-            // Фильтруем по участнику
             if (participantId !== 'all') {
                 events = events.filter(ev => ev.participantId === participantId);
             }
-            // Группируем по названию события
             const groups = {};
             events.forEach(ev => {
                 const key = ev.name;
                 if (!groups[key]) groups[key] = 0;
-                const duration = (new Date(ev.end) - new Date(ev.start)) / (1000 * 60 * 60); // часы
+                const duration = (new Date(ev.end) - new Date(ev.start)) / (1000 * 60 * 60);
                 groups[key] += duration;
             });
 
@@ -1460,7 +1703,6 @@
                 return;
             }
 
-            // Сортируем по убыванию
             const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
             let tableHtml = `<table class="analytics-table"><tr><th>Событие</th><th>Время</th></tr>`;
             sorted.forEach(([name, hours]) => {
@@ -1470,8 +1712,6 @@
             });
             tableHtml += `</table>`;
             resultDiv.innerHTML = tableHtml;
-
-            // Рисуем круговую диаграмму
             drawPieChart(sorted);
         }
 
@@ -1504,7 +1744,6 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Легенда (просто текст)
                 const midAngle = startAngle + sliceAngle / 2;
                 const labelRadius = radius * 0.65;
                 const labelX = centerX + Math.cos(midAngle) * labelRadius;
@@ -1519,7 +1758,6 @@
                 startAngle += sliceAngle;
             });
 
-            // Легенда снизу
             let legendY = height - 10;
             let legendX = 10;
             ctx.font = '11px sans-serif';
@@ -1588,17 +1826,13 @@
         }
 
         // ============================================================
-        //  ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ
+        //  ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ ОТОБРАЖЕНИЯ
         // ============================================================
         function setView(view) {
             currentView = view;
             document.querySelectorAll('.view-switch button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.view === view);
             });
-            // Сбрасываем период для месяца, если переключаемся на него
-            if (view === 'month') {
-                // остаёмся на текущем смещении
-            }
             render();
         }
 
