@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Семейный планировщик</title>
     <style>
+        /* ----- CSS-переменные (те же, что были) ----- */
         :root {
             --bg: #f4f6f9;
             --card-bg: #ffffff;
@@ -25,6 +26,7 @@
             --drag-shadow: 0 8px 30px rgba(0,0,0,0.2);
             --warning-bg: #fef3c7;
             --warning-text: #92400e;
+            --month-day-bg: #ffffff;
         }
         body.dark {
             --bg: #0f172a;
@@ -46,15 +48,9 @@
             --drag-shadow: 0 8px 30px rgba(0,0,0,0.5);
             --warning-bg: #78350f;
             --warning-text: #fbbf24;
+            --month-day-bg: #1e293b;
         }
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            -webkit-touch-callout: none;
-            -webkit-user-select: none;
-            user-select: none;
-        }
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
         body {
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
             background: var(--bg);
@@ -76,9 +72,11 @@
         .header-actions {
             display: flex;
             justify-content: center;
+            gap: 12px;
             margin-bottom: 10px;
+            flex-wrap: wrap;
         }
-        .btn-edit-members {
+        .btn-edit-members, .btn-analytics {
             background: var(--card-bg);
             border: 1px solid var(--border);
             border-radius: 40px;
@@ -93,7 +91,7 @@
             align-items: center;
             gap: 6px;
         }
-        .btn-edit-members:hover {
+        .btn-edit-members:hover, .btn-analytics:hover {
             background: var(--switch-bg);
         }
         .theme-toggle {
@@ -105,11 +103,8 @@
             padding: 4px 8px;
             border-radius: 30px;
             transition: 0.2s;
-            margin-left: 8px;
         }
-        .theme-toggle:hover {
-            background: var(--border);
-        }
+        .theme-toggle:hover { background: var(--border); }
         .week-nav {
             display: flex;
             justify-content: space-between;
@@ -121,499 +116,288 @@
             box-shadow: var(--shadow);
             touch-action: none;
         }
-        .week-nav .week-label {
-            font-weight: 500;
-            font-size: 16px;
-        }
+        .week-nav .week-label { font-weight: 500; font-size: 16px; }
         .week-nav button {
-            background: none;
-            border: none;
-            font-size: 24px;
-            cursor: pointer;
-            color: var(--text);
-            padding: 0 8px;
-            transition: 0.2s;
+            background: none; border: none; font-size: 24px; cursor: pointer;
+            color: var(--text); padding: 0 8px; transition: 0.2s;
         }
-        .week-nav button:hover {
-            color: var(--fab-bg);
-        }
+        .week-nav button:hover { color: var(--fab-bg); }
         .filters {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px 14px;
-            background: var(--filter-bg);
-            padding: 12px 16px;
-            border-radius: 40px;
-            margin-bottom: 16px;
-            box-shadow: var(--shadow);
-            justify-content: center;
+            display: flex; flex-wrap: wrap; gap: 8px 14px;
+            background: var(--filter-bg); padding: 12px 16px;
+            border-radius: 40px; margin-bottom: 16px;
+            box-shadow: var(--shadow); justify-content: center;
             transition: background 0.2s;
         }
         .filter-item {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            font-size: 14px;
-            cursor: pointer;
-            color: var(--text);
+            display: flex; align-items: center; gap: 4px;
+            font-size: 14px; cursor: pointer; color: var(--text);
         }
         .filter-item input[type="checkbox"] {
-            width: 18px;
-            height: 18px;
-            accent-color: currentColor;
-            cursor: pointer;
+            width: 18px; height: 18px; accent-color: currentColor; cursor: pointer;
         }
         .color-dot {
-            display: inline-block;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            border: 1px solid rgba(0,0,0,0.1);
-            flex-shrink: 0;
+            display: inline-block; width: 14px; height: 14px;
+            border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0;
         }
         .view-switch {
-            display: flex;
-            justify-content: center;
-            gap: 6px;
-            background: var(--switch-bg);
-            border-radius: 40px;
-            padding: 4px;
-            margin-bottom: 16px;
-            transition: background 0.2s;
+            display: flex; justify-content: center; gap: 6px;
+            background: var(--switch-bg); border-radius: 40px; padding: 4px;
+            margin-bottom: 16px; transition: background 0.2s;
         }
         .view-switch button {
-            flex: 1;
-            max-width: 120px;
-            padding: 8px 12px;
-            border: none;
-            border-radius: 30px;
-            background: transparent;
-            font-weight: 500;
-            font-size: 15px;
-            cursor: pointer;
-            transition: 0.2s;
-            color: var(--text-secondary);
+            flex: 1; max-width: 100px; padding: 8px 12px;
+            border: none; border-radius: 30px; background: transparent;
+            font-weight: 500; font-size: 15px; cursor: pointer;
+            transition: 0.2s; color: var(--text-secondary);
         }
         .view-switch button.active {
-            background: var(--switch-active);
-            box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+            background: var(--switch-active); box-shadow: 0 2px 6px rgba(0,0,0,0.08);
             color: var(--text);
         }
-        .week-container {
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            touch-action: pan-y;
-        }
+        .week-container { display: flex; flex-direction: column; gap: 12px; touch-action: pan-y; }
+        /* Список (без изменений) */
         .day-list {
-            background: var(--day-bg);
-            border-radius: 20px;
-            padding: 12px 16px;
-            box-shadow: var(--shadow);
-            transition: background 0.2s;
+            background: var(--day-bg); border-radius: 20px; padding: 12px 16px;
+            box-shadow: var(--shadow); transition: background 0.2s;
         }
         .day-header {
-            font-weight: 600;
-            font-size: 18px;
-            display: flex;
-            justify-content: space-between;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 8px;
-            margin-bottom: 8px;
-            color: var(--text);
+            font-weight: 600; font-size: 18px; display: flex;
+            justify-content: space-between; border-bottom: 1px solid var(--border);
+            padding-bottom: 8px; margin-bottom: 8px; color: var(--text);
         }
-        .day-header .date {
-            font-weight: 400;
-            color: var(--text-secondary);
-            font-size: 14px;
-        }
+        .day-header .date { font-weight: 400; color: var(--text-secondary); font-size: 14px; }
         .event-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--border);
-            color: var(--text);
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 0; border-bottom: 1px solid var(--border); color: var(--text);
         }
-        .event-item:last-child {
-            border-bottom: none;
-        }
+        .event-item:last-child { border-bottom: none; }
         .event-time {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--text-secondary);
-            min-width: 80px;
+            font-size: 13px; font-weight: 500; color: var(--text-secondary); min-width: 80px;
         }
-        .event-name {
-            flex: 1;
-            font-size: 15px;
-        }
+        .event-name { flex: 1; font-size: 15px; }
         .event-participant {
-            font-size: 13px;
-            padding: 2px 12px;
-            border-radius: 30px;
-            background: var(--border);
-            white-space: nowrap;
-            color: var(--text);
+            font-size: 13px; padding: 2px 12px; border-radius: 30px;
+            background: var(--border); white-space: nowrap; color: var(--text);
         }
         .event-participant .dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 4px;
+            display: inline-block; width: 10px; height: 10px;
+            border-radius: 50%; margin-right: 4px;
         }
-        .empty-day {
-            color: var(--text-secondary);
-            font-size: 14px;
-            padding: 6px 0;
-            text-align: center;
-        }
+        .empty-day { color: var(--text-secondary); font-size: 14px; padding: 6px 0; text-align: center; }
         .event-actions button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 18px;
-            color: var(--text-secondary);
-            padding: 0 4px;
-            transition: 0.2s;
+            background: none; border: none; cursor: pointer;
+            font-size: 18px; color: var(--text-secondary); padding: 0 4px; transition: 0.2s;
         }
-        .event-actions button:hover {
-            color: var(--fab-bg);
-        }
-        .event-actions .delete-event:hover {
-            color: #ef4444;
-        }
+        .event-actions button:hover { color: var(--fab-bg); }
+        .event-actions .delete-event:hover { color: #ef4444; }
+
+        /* Сетка (недельная) */
         .grid-wrapper {
-            overflow-x: auto;
-            -webkit-overflow-scrolling: touch;
-            margin: 0 -12px;
-            padding: 0 12px;
-            touch-action: pan-y; /* разрешаем вертикальную прокрутку */
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+            margin: 0 -12px; padding: 0 12px; touch-action: pan-y;
         }
         .grid-scroll {
-            display: flex;
-            gap: 4px;
-            min-width: 700px;
-            touch-action: pan-y;
+            display: flex; gap: 4px; min-width: 700px; touch-action: pan-y;
         }
         .grid-day {
-            flex: 1;
-            min-width: 80px;
-            position: relative;
-            background: var(--grid-bg);
-            border-radius: 12px;
-            padding: 0 4px 4px 4px;
-            transition: background 0.2s;
+            flex: 1; min-width: 80px; position: relative;
+            background: var(--grid-bg); border-radius: 12px;
+            padding: 0 4px 4px 4px; transition: background 0.2s;
         }
         .grid-day-header {
-            text-align: center;
-            font-weight: 600;
-            padding: 8px 0;
-            background: var(--card-bg);
-            border-radius: 12px 12px 0 0;
-            color: var(--text);
+            text-align: center; font-weight: 600; padding: 8px 0;
+            background: var(--card-bg); border-radius: 12px 12px 0 0; color: var(--text);
         }
-        .grid-day-header .date {
-            font-weight: 400;
-            font-size: 12px;
-            color: var(--text-secondary);
-        }
+        .grid-day-header .date { font-weight: 400; font-size: 12px; color: var(--text-secondary); }
         .grid-timeline {
-            position: relative;
-            height: 768px;
-            background: var(--grid-cell);
-            border-radius: 0 0 12px 12px;
-            overflow: hidden;
-            transition: background 0.2s;
+            position: relative; height: 768px; background: var(--grid-cell);
+            border-radius: 0 0 12px 12px; overflow: hidden; transition: background 0.2s;
             touch-action: pan-y;
         }
         .grid-hour {
-            position: absolute;
-            left: 0;
-            right: 0;
-            border-top: 1px solid var(--hour-line);
-            height: 32px;
-            display: flex;
-            align-items: center;
-            padding-left: 4px;
-            font-size: 10px;
-            color: var(--text-secondary);
-            transition: background 0.2s;
+            position: absolute; left: 0; right: 0; border-top: 1px solid var(--hour-line);
+            height: 32px; display: flex; align-items: center; padding-left: 4px;
+            font-size: 10px; color: var(--text-secondary); transition: background 0.2s;
             z-index: 1;
         }
-        .grid-hour.conflict {
-            background: var(--conflict-bg) !important;
-        }
+        .grid-hour.conflict { background: var(--conflict-bg) !important; }
         .grid-hour-overlay {
-            position: absolute;
-            left: 0;
-            right: 0;
-            height: 32px;
-            z-index: 2;
-            pointer-events: none;
-            opacity: 0.5;
+            position: absolute; left: 0; right: 0; height: 32px;
+            z-index: 2; pointer-events: none; opacity: 0.5;
         }
         .grid-event-block {
-            position: absolute;
-            left: 4px;
-            right: 4px;
-            border-radius: 6px;
-            padding: 2px 6px;
-            color: white;
-            font-size: 11px;
-            overflow: hidden;
+            position: absolute; left: 4px; right: 4px; border-radius: 6px;
+            padding: 2px 6px; color: white; font-size: 11px; overflow: hidden;
             box-shadow: 0 1px 4px rgba(0,0,0,0.1);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            cursor: grab;
-            z-index: 5;
-            transition: box-shadow 0.2s, opacity 0.2s;
+            display: flex; flex-direction: column; justify-content: center;
+            cursor: grab; z-index: 5; transition: box-shadow 0.2s, opacity 0.2s;
             touch-action: none;
         }
-        .grid-event-block:active {
-            cursor: grabbing;
-        }
+        .grid-event-block:active { cursor: grabbing; }
         .grid-event-block.dragging {
-            z-index: 1000;
-            box-shadow: var(--drag-shadow);
-            opacity: 0.9;
-            transform: scale(1.02);
+            z-index: 1000; box-shadow: var(--drag-shadow); opacity: 0.9; transform: scale(1.02);
         }
-        .grid-event-block.conflict {
-            outline: 3px solid #ef4444;
-            outline-offset: -2px;
-        }
+        .grid-event-block.conflict { outline: 3px solid #ef4444; outline-offset: -2px; }
         .grid-event-block .conflict-badge {
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            background: #ef4444;
-            color: white;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            font-size: 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            position: absolute; top: -6px; right: -6px; background: #ef4444;
+            color: white; border-radius: 50%; width: 18px; height: 18px;
+            font-size: 12px; display: flex; align-items: center; justify-content: center;
         }
-        .grid-event-block strong {
-            font-size: 11px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        .grid-event-block strong { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .grid-event-block .time { font-size: 9px; opacity: 0.9; }
+        .grid-event-block .participant { font-size: 9px; opacity: 0.8; }
+
+        /* Месячный вид */
+        .month-grid {
+            background: var(--card-bg); border-radius: 20px; padding: 12px;
+            box-shadow: var(--shadow);
         }
-        .grid-event-block .time {
-            font-size: 9px;
-            opacity: 0.9;
+        .month-header {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            text-align: center; font-weight: 600; color: var(--text-secondary);
+            font-size: 14px; margin-bottom: 8px;
         }
-        .grid-event-block .participant {
-            font-size: 9px;
-            opacity: 0.8;
+        .month-days {
+            display: grid; grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
         }
+        .month-day {
+            background: var(--month-day-bg); border-radius: 12px;
+            padding: 6px 2px; text-align: center; min-height: 60px;
+            transition: background 0.2s; cursor: pointer;
+            display: flex; flex-direction: column; align-items: center;
+            border: 1px solid transparent;
+        }
+        .month-day.other-month { opacity: 0.4; }
+        .month-day .day-number {
+            font-weight: 500; font-size: 16px; color: var(--text);
+        }
+        .month-day .day-dots {
+            display: flex; flex-wrap: wrap; justify-content: center;
+            gap: 2px; margin-top: 4px;
+        }
+        .month-day .day-dots .dot {
+            width: 10px; height: 10px; border-radius: 50%;
+            border: 1px solid rgba(0,0,0,0.1);
+        }
+        .month-day.today { border-color: var(--fab-bg); background: var(--switch-bg); }
+
+        /* Модалки (общие) */
         .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.4);
-            backdrop-filter: blur(2px);
-            z-index: 2000;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
+            display: none; position: fixed; top: 0; left: 0;
+            width: 100%; height: 100%; background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(2px); z-index: 2000;
+            justify-content: center; align-items: center; padding: 20px;
         }
-        .modal-overlay.active {
-            display: flex;
-        }
+        .modal-overlay.active { display: flex; }
         .modal {
-            background: var(--card-bg);
-            border-radius: 28px;
-            max-width: 450px;
-            width: 100%;
-            padding: 24px;
+            background: var(--card-bg); border-radius: 28px;
+            max-width: 500px; width: 100%; padding: 24px;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
-            max-height: 90vh;
-            overflow-y: auto;
-            color: var(--text);
-            transition: background 0.2s, color 0.2s;
+            max-height: 90vh; overflow-y: auto;
+            color: var(--text); transition: background 0.2s, color 0.2s;
         }
         .modal h2 {
-            font-size: 22px;
-            margin-bottom: 16px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+            font-size: 22px; margin-bottom: 16px;
+            display: flex; justify-content: space-between; align-items: center;
         }
         .modal h2 button {
-            background: none;
-            border: none;
-            font-size: 28px;
-            cursor: pointer;
-            color: var(--text-secondary);
+            background: none; border: none; font-size: 28px;
+            cursor: pointer; color: var(--text-secondary);
         }
         .modal label {
-            display: block;
-            font-weight: 500;
-            margin: 12px 0 4px;
-            font-size: 14px;
+            display: block; font-weight: 500; margin: 12px 0 4px; font-size: 14px;
         }
-        .modal input[type="text"],
-        .modal input[type="datetime-local"],
-        .modal select,
-        .modal textarea {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid var(--border);
-            border-radius: 40px;
-            font-size: 16px;
-            margin-bottom: 8px;
-            background: var(--card-bg);
-            color: var(--text);
-            transition: background 0.2s, color 0.2s;
-            font-family: inherit;
+        .modal input[type="text"], .modal input[type="datetime-local"],
+        .modal select, .modal textarea {
+            width: 100%; padding: 10px 14px;
+            border: 1px solid var(--border); border-radius: 40px;
+            font-size: 16px; margin-bottom: 8px;
+            background: var(--card-bg); color: var(--text);
+            transition: background 0.2s, color 0.2s; font-family: inherit;
         }
-        .modal textarea {
-            border-radius: 20px;
-            resize: vertical;
-            min-height: 60px;
-        }
+        .modal textarea { border-radius: 20px; resize: vertical; min-height: 60px; }
         .modal .color-select {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 12px;
+            display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px;
         }
         .modal .color-option {
-            width: 40px;
-            height: 40px;
-            border-radius: 50%;
-            cursor: pointer;
-            transition: 0.2s;
-            border: 3px solid transparent;
+            width: 40px; height: 40px; border-radius: 50%;
+            cursor: pointer; transition: 0.2s; border: 3px solid transparent;
         }
         .modal .color-option.selected {
-            border-color: var(--text);
-            transform: scale(1.15);
+            border-color: var(--text); transform: scale(1.15);
         }
-        .modal .member-list {
-            margin: 16px 0;
-        }
+        .modal .member-list { margin: 16px 0; }
         .modal .member-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--border);
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 0; border-bottom: 1px solid var(--border);
         }
-        .modal .member-row .color-dot {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-        }
-        .modal .member-row span {
-            flex: 1;
-        }
+        .modal .member-row .color-dot { width: 24px; height: 24px; border-radius: 50%; }
+        .modal .member-row span { flex: 1; }
         .modal .member-row button {
-            background: none;
-            border: none;
-            color: #ef4444;
-            font-size: 18px;
-            cursor: pointer;
+            background: none; border: none; color: #ef4444;
+            font-size: 18px; cursor: pointer;
         }
         .recurrence-group {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 8px;
+            display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px;
         }
-        .recurrence-group select,
-        .recurrence-group input {
-            flex: 1;
-            min-width: 80px;
-        }
+        .recurrence-group select, .recurrence-group input { flex: 1; min-width: 80px; }
         .checkbox-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            margin: 8px 0;
+            display: flex; align-items: center; gap: 8px; margin: 8px 0;
         }
-        .checkbox-row input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: var(--fab-bg);
-        }
+        .checkbox-row input[type="checkbox"] { width: 20px; height: 20px; accent-color: var(--fab-bg); }
         .btn-primary {
-            background: var(--fab-bg);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 40px;
-            font-size: 16px;
-            font-weight: 500;
-            width: 100%;
-            cursor: pointer;
-            transition: 0.2s;
+            background: var(--fab-bg); color: white; border: none;
+            padding: 12px 24px; border-radius: 40px; font-size: 16px;
+            font-weight: 500; width: 100%; cursor: pointer; transition: 0.2s;
         }
-        .btn-primary:hover {
-            opacity: 0.9;
-        }
+        .btn-primary:hover { opacity: 0.9; }
         .btn-secondary {
-            background: var(--border);
-            color: var(--text);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.2s;
+            background: var(--border); color: var(--text); border: none;
+            padding: 10px 20px; border-radius: 40px; font-size: 14px;
+            cursor: pointer; transition: 0.2s;
         }
-        .btn-secondary:hover {
-            opacity: 0.8;
-        }
+        .btn-secondary:hover { opacity: 0.8; }
         .btn-warning {
-            background: var(--warning-bg);
-            color: var(--warning-text);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 40px;
-            font-size: 14px;
-            cursor: pointer;
-            transition: 0.2s;
-            font-weight: 500;
+            background: var(--warning-bg); color: var(--warning-text);
+            border: none; padding: 10px 20px; border-radius: 40px;
+            font-size: 14px; cursor: pointer; transition: 0.2s; font-weight: 500;
         }
-        .btn-warning:hover {
-            opacity: 0.8;
-        }
+        .btn-warning:hover { opacity: 0.8; }
         .fab {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            width: 64px;
-            height: 64px;
-            border-radius: 50%;
-            background: var(--fab-bg);
-            color: var(--fab-text);
-            border: none;
-            font-size: 36px;
+            position: fixed; bottom: 24px; right: 24px;
+            width: 64px; height: 64px; border-radius: 50%;
+            background: var(--fab-bg); color: var(--fab-text);
+            border: none; font-size: 36px;
             box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
-            cursor: pointer;
-            transition: 0.2s;
-            z-index: 500;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            cursor: pointer; transition: 0.2s; z-index: 500;
+            display: flex; align-items: center; justify-content: center;
         }
-        .fab:hover {
-            transform: scale(1.05);
+        .fab:hover { transform: scale(1.05); }
+
+        /* Аналитика */
+        .analytics-result {
+            margin-top: 16px;
         }
+        .analytics-table {
+            width: 100%; border-collapse: collapse; margin-top: 8px;
+        }
+        .analytics-table th, .analytics-table td {
+            padding: 6px 10px; border-bottom: 1px solid var(--border);
+            text-align: left; font-size: 14px;
+        }
+        .analytics-table th { font-weight: 600; color: var(--text-secondary); }
+        .chart-container {
+            margin-top: 16px; display: flex; justify-content: center;
+        }
+        .chart-container canvas { max-width: 100%; max-height: 250px; }
+
         @media (max-width: 480px) {
             body { padding: 12px 8px 80px 8px; }
             .filters { padding: 8px 12px; gap: 4px 10px; }
             .filter-item { font-size: 13px; }
-            .view-switch button { font-size: 14px; padding: 6px 10px; }
+            .view-switch button { font-size: 14px; padding: 6px 10px; max-width: 80px; }
             .day-header { font-size: 16px; }
             .event-time { min-width: 60px; font-size: 12px; }
             .event-name { font-size: 14px; }
@@ -622,6 +406,8 @@
             .grid-timeline { height: 576px; }
             .grid-hour { height: 24px; }
             .grid-event-block { font-size: 10px; }
+            .month-day { min-height: 50px; padding: 4px 2px; }
+            .month-day .day-number { font-size: 14px; }
         }
     </style>
 </head>
@@ -632,16 +418,18 @@
     </h1>
     <div class="header-actions">
         <button class="btn-edit-members" onclick="openSettings()">✏️ Редактировать участников</button>
+        <button class="btn-analytics" onclick="openAnalytics()">📊 Аналитика</button>
     </div>
     <div class="week-nav">
-        <button onclick="changeWeek(-1)">◀</button>
-        <span class="week-label" id="weekLabel">Неделя</span>
-        <button onclick="changeWeek(1)">▶</button>
+        <button onclick="changePeriod(-1)">◀</button>
+        <span class="week-label" id="periodLabel">Неделя</span>
+        <button onclick="changePeriod(1)">▶</button>
     </div>
     <div class="filters" id="filtersContainer"></div>
     <div class="view-switch">
         <button class="active" data-view="list" onclick="setView('list')">📋 Список</button>
         <button data-view="grid" onclick="setView('grid')">📊 Сетка</button>
+        <button data-view="month" onclick="setView('month')">📅 Месяц</button>
     </div>
     <div class="week-container" id="weekContainer"></div>
     <button class="fab" onclick="openAddEvent()">＋</button>
@@ -712,20 +500,39 @@
         </div>
     </div>
 
+    <!-- Модалка аналитики -->
+    <div class="modal-overlay" id="analyticsModal">
+        <div class="modal">
+            <h2>📊 Аналитика <button onclick="closeAnalytics()">✕</button></h2>
+            <label>Период с</label>
+            <input type="date" id="analyticsStart" />
+            <label>по</label>
+            <input type="date" id="analyticsEnd" />
+            <label>Участник</label>
+            <select id="analyticsParticipant">
+                <option value="all">Все</option>
+            </select>
+            <button class="btn-primary" onclick="showAnalytics()" style="margin-top:12px;">Показать</button>
+            <div class="analytics-result" id="analyticsResult"></div>
+            <div class="chart-container">
+                <canvas id="analyticsChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Модалка просмотра дня в месяце -->
+    <div class="modal-overlay" id="dayEventsModal">
+        <div class="modal">
+            <h2><span id="dayEventsTitle">События</span><button onclick="closeDayEvents()">✕</button></h2>
+            <div id="dayEventsList"></div>
+        </div>
+    </div>
+
     <script>
         // ============================================================
         //  ДАННЫЕ И ХРАНИЛИЩЕ
         // ============================================================
-        // Новые стильные цвета (Material Design)
-        const COLORS = [
-            '#4F46E5', // индиго
-            '#7C3AED', // фиолетовый
-            '#EC4899', // розовый
-            '#EF4444', // красный
-            '#F59E0B', // янтарный
-            '#10B981', // изумрудный
-            '#06B6D4'  // циан
-        ];
+        const COLORS = ['#4F46E5','#7C3AED','#EC4899','#EF4444','#F59E0B','#10B981','#06B6D4'];
 
         function loadData() {
             const raw = localStorage.getItem('familyPlannerData');
@@ -741,7 +548,7 @@
 
         let filterState = {};
         data.members.forEach(m => filterState[m.id] = true);
-        let weekOffset = 0;
+        let periodOffset = 0; // для недели и месяца
         let currentView = 'list';
         let currentTheme = 'auto';
         let pendingEvent = null;
@@ -751,6 +558,7 @@
         function getMemberColor(id) { const m = getMember(id); return m ? m.color : '#94a3b8'; }
         function getMemberName(id) { const m = getMember(id); return m ? m.name : 'Неизвестный'; }
 
+        // ---- Даты ----
         function getWeekRange(offset = 0) {
             const now = new Date();
             now.setDate(now.getDate() + offset * 7);
@@ -764,6 +572,15 @@
             sunday.setHours(23,59,59,999);
             return { monday, sunday };
         }
+
+        function getMonthRange(offset = 0) {
+            const now = new Date();
+            now.setMonth(now.getMonth() + offset);
+            const first = new Date(now.getFullYear(), now.getMonth(), 1);
+            const last = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+            return { first, last };
+        }
+
         function getWeekDays(offset = 0) {
             const { monday } = getWeekRange(offset);
             const days = [];
@@ -774,8 +591,12 @@
             }
             return days;
         }
+
         function formatDate(date) {
             return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+        }
+        function formatDateFull(date) {
+            return date.toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', year: 'numeric' });
         }
         function formatTime(date) {
             return date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
@@ -787,10 +608,15 @@
             return local.toISOString().slice(0, 16);
         }
 
+        function dateOnly(date) {
+            return new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        }
+
+        // ---- События с повторениями ----
         function isEventOnDate(event, date) {
             const baseStart = new Date(event.start);
-            const baseDate = new Date(baseStart.getFullYear(), baseStart.getMonth(), baseStart.getDate());
-            const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            const baseDate = dateOnly(baseStart);
+            const target = dateOnly(date);
             if (!event.recurrence || event.recurrence.type === 'none') {
                 return baseDate.getTime() === target.getTime();
             }
@@ -806,9 +632,8 @@
                     return diffDays % (7 * rec.interval) === 0;
                 }
                 case 'weekly_workdays': {
-                    // 5/2: повторяется каждый будний день с интервалом в днях
                     const day = target.getDay();
-                    if (day === 0 || day === 6) return false; // выходные
+                    if (day === 0 || day === 6) return false;
                     return diffDays % rec.interval === 0;
                 }
                 case 'monthly': {
@@ -840,9 +665,27 @@
             return result;
         }
 
-        function getEventsForWeek(offset = 0) {
-            const days = getWeekDays(offset);
-            return days.map(date => getEventsForDate(date));
+        function getEventsForPeriod(startDate, endDate) {
+            const result = [];
+            const start = dateOnly(startDate);
+            const end = dateOnly(endDate);
+            let current = new Date(start);
+            while (current <= end) {
+                const events = getEventsForDate(current);
+                events.forEach(ev => {
+                    // Обрезаем по периоду
+                    let evStart = new Date(ev.start);
+                    let evEnd = new Date(ev.end);
+                    if (evStart < startDate) evStart = startDate;
+                    if (evEnd > endDate) evEnd = endDate;
+                    if (evStart < evEnd) {
+                        const copy = { ...ev, start: evStart.toISOString(), end: evEnd.toISOString() };
+                        result.push(copy);
+                    }
+                });
+                current.setDate(current.getDate() + 1);
+            }
+            return result;
         }
 
         function intervalsOverlap(s1, e1, s2, e2) {
@@ -868,15 +711,22 @@
         //  РЕНДЕРИНГ
         // ============================================================
         function render() {
-            updateWeekLabel();
+            updatePeriodLabel();
             renderFilters();
             if (currentView === 'list') renderList();
-            else renderGrid();
+            else if (currentView === 'grid') renderGrid();
+            else if (currentView === 'month') renderMonth();
         }
 
-        function updateWeekLabel() {
-            const { monday, sunday } = getWeekRange(weekOffset);
-            document.getElementById('weekLabel').textContent = `${formatDate(monday)} – ${formatDate(sunday)}`;
+        function updatePeriodLabel() {
+            const label = document.getElementById('periodLabel');
+            if (currentView === 'month') {
+                const { first } = getMonthRange(periodOffset);
+                label.textContent = first.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+            } else {
+                const { monday, sunday } = getWeekRange(periodOffset);
+                label.textContent = `${formatDate(monday)} – ${formatDate(sunday)}`;
+            }
         }
 
         function renderFilters() {
@@ -908,11 +758,11 @@
             return filterState[participantId] === false;
         }
 
-        // ----- Список -----
+        // ----- СПИСОК (недельный) -----
         function renderList() {
             const container = document.getElementById('weekContainer');
-            const days = getWeekDays(weekOffset);
-            const eventsByDay = getEventsForWeek(weekOffset);
+            const days = getWeekDays(periodOffset);
+            const eventsByDay = days.map(d => getEventsForDate(d));
             let html = '';
             days.forEach((date, index) => {
                 const dayEvents = eventsByDay[index]
@@ -956,11 +806,11 @@
             return ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index];
         }
 
-        // ----- Сетка -----
+        // ----- НЕДЕЛЬНАЯ СЕТКА -----
         function renderGrid() {
             const container = document.getElementById('weekContainer');
-            const days = getWeekDays(weekOffset);
-            const eventsByDay = getEventsForWeek(weekOffset);
+            const days = getWeekDays(periodOffset);
+            const eventsByDay = days.map(d => getEventsForDate(d));
             const hourHeight = window.innerWidth <= 480 ? 24 : 32;
             const totalHeight = 24 * hourHeight;
 
@@ -970,11 +820,9 @@
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
 
-                // Собираем цвета участников для каждого часа (для полосок)
                 const hourColors = new Array(24).fill(null).map(() => []);
                 for (let h = 0; h < 24; h++) {
-                    const hourStart = h;
-                    const hourEnd = h + 1;
+                    const hourStart = h, hourEnd = h + 1;
                     const eventsInHour = dayEvents.filter(ev => {
                         const s = new Date(ev.start);
                         const e = new Date(ev.end);
@@ -998,8 +846,6 @@
                     const top = h * hourHeight;
                     const colors = hourColors[h];
                     const hasOverlap = colors.length > 1;
-
-                    // Фоновые полоски при наложении
                     if (hasOverlap) {
                         let gradient = '';
                         if (colors.length === 2) {
@@ -1010,8 +856,6 @@
                         }
                         html += `<div class="grid-hour-overlay" style="top:${top}px; height:${hourHeight}px; background:${gradient};"></div>`;
                     }
-
-                    // Определяем, есть ли неразрешённый конфликт
                     let hasRealConflict = false;
                     if (colors.length > 1) {
                         const eventsInHour = dayEvents.filter(ev => {
@@ -1024,12 +868,10 @@
                         const hasUnresolved = eventsInHour.some(ev => !ev.allowOverlap);
                         if (hasUnresolved) hasRealConflict = true;
                     }
-
                     const conflictClass = hasRealConflict ? ' conflict' : '';
                     html += `<div class="grid-hour${conflictClass}" style="top:${top}px; height:${hourHeight}px;">${h}:00${hasRealConflict ? ' ⚠️' : ''}</div>`;
                 }
 
-                // Рисуем события
                 dayEvents.forEach(ev => {
                     const start = new Date(ev.start);
                     const end = new Date(ev.end);
@@ -1061,23 +903,102 @@
             });
             html += `</div></div>`;
             container.innerHTML = html;
-
             initDragAndDrop();
-            // Отключаем свайп для сетки
+            // отключаем свайп для сетки
             const containerEl = document.getElementById('weekContainer');
             containerEl.removeEventListener('touchstart', onSwipeStart);
             containerEl.removeEventListener('touchmove', onSwipeMove);
             containerEl.removeEventListener('touchend', onSwipeEnd);
         }
 
-        // ============================================================
-        //  DRAG & DROP (только в сетке)
-        // ============================================================
-        let dragData = null;
-        let dragClone = null;
-        let dragEventId = null;
-        let dragDuration = 0;
+        // ----- МЕСЯЧНЫЙ ВИД -----
+        function renderMonth() {
+            const container = document.getElementById('weekContainer');
+            const { first, last } = getMonthRange(periodOffset);
+            const start = new Date(first);
+            start.setDate(1);
+            // Смещение до понедельника
+            let startDay = start.getDay(); // 0-вс, 1-пн...
+            const offset = (startDay === 0 ? 6 : startDay - 1);
+            start.setDate(start.getDate() - offset);
 
+            const end = new Date(last);
+            const totalDays = Math.ceil((end - start) / (24*60*60*1000)) + 1;
+
+            let html = `<div class="month-grid">`;
+            html += `<div class="month-header"><span>Пн</span><span>Вт</span><span>Ср</span><span>Чт</span><span>Пт</span><span>Сб</span><span>Вс</span></div>`;
+            html += `<div class="month-days">`;
+
+            const today = dateOnly(new Date());
+
+            for (let i = 0; i < totalDays; i++) {
+                const date = new Date(start);
+                date.setDate(start.getDate() + i);
+                const isCurrentMonth = date.getMonth() === first.getMonth() && date.getFullYear() === first.getFullYear();
+                const isToday = dateOnly(date).getTime() === today.getTime();
+                const events = getEventsForDate(date).filter(ev => !isFilteredOut(ev.participantId));
+                const colors = new Set();
+                events.forEach(ev => {
+                    const color = getMemberColor(ev.participantId);
+                    if (color) colors.add(color);
+                });
+
+                html += `<div class="month-day${isCurrentMonth ? '' : ' other-month'}${isToday ? ' today' : ''}" onclick="showDayEvents('${date.toISOString().slice(0,10)}')">`;
+                html += `<div class="day-number">${date.getDate()}</div>`;
+                if (colors.size > 0) {
+                    html += `<div class="day-dots">`;
+                    colors.forEach(c => {
+                        html += `<span class="dot" style="background:${c};"></span>`;
+                    });
+                    html += `</div>`;
+                }
+                html += `</div>`;
+            }
+
+            html += `</div></div>`;
+            container.innerHTML = html;
+            // Отключаем свайп для месяца
+            const containerEl = document.getElementById('weekContainer');
+            containerEl.removeEventListener('touchstart', onSwipeStart);
+            containerEl.removeEventListener('touchmove', onSwipeMove);
+            containerEl.removeEventListener('touchend', onSwipeEnd);
+        }
+
+        // ---- Просмотр дня в месяце ----
+        function showDayEvents(dateStr) {
+            const date = new Date(dateStr);
+            const events = getEventsForDate(date).filter(ev => !isFilteredOut(ev.participantId));
+            document.getElementById('dayEventsTitle').textContent = `События ${formatDateFull(date)}`;
+            const list = document.getElementById('dayEventsList');
+            if (events.length === 0) {
+                list.innerHTML = '<p style="color:var(--text-secondary);">Нет событий</p>';
+            } else {
+                let html = '';
+                events.sort((a,b) => new Date(a.start) - new Date(b.start)).forEach(ev => {
+                    const participant = getMember(ev.participantId);
+                    const color = participant ? participant.color : '#94a3b8';
+                    const name = participant ? participant.name : 'Без участника';
+                    const start = new Date(ev.start);
+                    const end = new Date(ev.end);
+                    html += `
+                        <div class="event-item" style="border-bottom:1px solid var(--border); padding:6px 0;">
+                            <span class="event-time" style="min-width:70px;">${formatTime(start)} – ${formatTime(end)}</span>
+                            <span class="event-name">${ev.name}</span>
+                            <span class="event-participant"><span class="dot" style="background:${color};"></span> ${name}</span>
+                        </div>
+                    `;
+                });
+                list.innerHTML = html;
+            }
+            openModal('dayEventsModal');
+        }
+
+        function closeDayEvents() { closeModal('dayEventsModal'); }
+
+        // ============================================================
+        //  DRAG & DROP (только сетка)
+        // ============================================================
+        let dragData = null, dragClone = null, dragEventId = null, dragDuration = 0;
         function initDragAndDrop() {
             const blocks = document.querySelectorAll('.grid-event-block');
             blocks.forEach(block => {
@@ -1101,13 +1022,11 @@
             document.addEventListener('mousemove', onDragMoveMouse);
             document.addEventListener('mouseup', onDragEndMouse);
         }
-
         function onDragMoveMouse(e) {
             e.preventDefault();
             const touch = { clientX: e.clientX, clientY: e.clientY };
             onDragMove({ touches: [touch], preventDefault: () => {} });
         }
-
         function onDragEndMouse(e) {
             onDragEnd({});
             document.removeEventListener('mousemove', onDragMoveMouse);
@@ -1155,8 +1074,7 @@
 
             const gridScroll = document.getElementById('gridScroll');
             const dayElements = gridScroll.querySelectorAll('.grid-day');
-            let targetDayIndex = -1;
-            let targetDate = null;
+            let targetDayIndex = -1, targetDate = null;
             dayElements.forEach((dayEl, idx) => {
                 const dayRect = dayEl.getBoundingClientRect();
                 if (touch.clientX >= dayRect.left && touch.clientX < dayRect.right) {
@@ -1186,7 +1104,6 @@
             if (!dragClone) return;
             document.body.removeChild(dragClone);
             dragClone = null;
-
             if (dragData && dragData.targetDate !== undefined) {
                 const ev = data.events.find(item => item.id === dragEventId);
                 if (ev) {
@@ -1195,22 +1112,19 @@
                     newStart.setHours(Math.floor(dragData.targetHour), (dragData.targetHour % 1) * 60, 0, 0);
                     const newEnd = new Date(newStart);
                     newEnd.setTime(newStart.getTime() + dragDuration * 3600000);
-
                     ev.start = newStart.toISOString();
                     ev.end = newEnd.toISOString();
                     saveData();
                     render();
                 }
             }
-            if (dragData && dragData.block) {
-                dragData.block.style.opacity = '1';
-            }
+            if (dragData && dragData.block) dragData.block.style.opacity = '1';
             dragData = null;
             dragEventId = null;
         }
 
         // ============================================================
-        //  СВАЙП (только для списка)
+        //  СВАЙП (только список)
         // ============================================================
         let swipeStartX = 0, swipeStartY = 0, isSwiping = false;
 
@@ -1232,7 +1146,6 @@
             swipeStartY = touch.clientY;
             isSwiping = false;
         }
-
         function onSwipeMove(e) {
             if (e.touches.length !== 1) return;
             const touch = e.touches[0];
@@ -1243,14 +1156,13 @@
                 isSwiping = true;
             }
         }
-
         function onSwipeEnd(e) {
             if (!isSwiping) return;
             const touch = e.changedTouches[0];
             const dx = touch.clientX - swipeStartX;
             if (Math.abs(dx) > 50) {
-                if (dx < 0) changeWeek(1);
-                else changeWeek(-1);
+                if (dx < 0) changePeriod(1);
+                else changePeriod(-1);
             }
             isSwiping = false;
         }
@@ -1258,13 +1170,17 @@
         // ============================================================
         //  НАВИГАЦИЯ
         // ============================================================
-        function changeWeek(delta) {
-            weekOffset += delta;
+        function changePeriod(delta) {
+            if (currentView === 'month') {
+                periodOffset += delta;
+            } else {
+                periodOffset += delta;
+            }
             render();
         }
 
         // ============================================================
-        //  СОБЫТИЯ
+        //  СОБЫТИЯ (CRUD)
         // ============================================================
         function openAddEvent() {
             document.getElementById('eventModalTitle').textContent = '➕ Новое событие';
@@ -1292,15 +1208,12 @@
             document.getElementById('editingEventId').value = eventId;
             document.getElementById('saveEventBtn').textContent = 'Обновить';
 
-            // Всегда используем оригинальную дату и время
             const start = new Date(ev.start);
             const end = new Date(ev.end);
-
             document.getElementById('eventName').value = ev.name;
             document.getElementById('eventNotes').value = ev.notes || '';
             document.getElementById('eventParticipant').value = ev.participantId;
             document.getElementById('allowOverlap').checked = ev.allowOverlap || false;
-
             document.getElementById('eventStart').value = toLocalDatetime(start);
             document.getElementById('eventEnd').value = toLocalDatetime(end);
 
@@ -1353,35 +1266,18 @@
                 return;
             }
 
-            const recurrence = {
-                type: recType,
-                interval: recInterval,
-                until: recUntil || null
-            };
+            const recurrence = { type: recType, interval: recInterval, until: recUntil || null };
 
             let eventObj;
             if (id) {
                 const ev = data.events.find(e => e.id === id);
                 if (!ev) return;
-                ev.name = name;
-                ev.start = start;
-                ev.end = end;
-                ev.participantId = participantId;
-                ev.recurrence = recurrence;
-                ev.allowOverlap = allowOverlap;
-                ev.notes = notes;
+                ev.name = name; ev.start = start; ev.end = end;
+                ev.participantId = participantId; ev.recurrence = recurrence;
+                ev.allowOverlap = allowOverlap; ev.notes = notes;
                 eventObj = ev;
             } else {
-                eventObj = {
-                    id: generateId(),
-                    name,
-                    start,
-                    end,
-                    participantId,
-                    recurrence,
-                    allowOverlap,
-                    notes
-                };
+                eventObj = { id: generateId(), name, start, end, participantId, recurrence, allowOverlap, notes };
             }
 
             const others = data.events.filter(e => e.id !== eventObj.id);
@@ -1394,11 +1290,7 @@
                 return;
             }
 
-            if (id) {
-                // уже обновили
-            } else {
-                data.events.push(eventObj);
-            }
+            if (id) { /* уже обновили */ } else { data.events.push(eventObj); }
             saveData();
             closeModal('eventModal');
             render();
@@ -1417,11 +1309,7 @@
                 render();
             }
         }
-
-        function rejectConflict() {
-            closeModal('conflictModal');
-            pendingEvent = null;
-        }
+        function rejectConflict() { closeModal('conflictModal'); pendingEvent = null; }
 
         function deleteEvent(id) {
             if (!confirm('Удалить событие?')) return;
@@ -1505,7 +1393,154 @@
         }
 
         // ============================================================
-        //  МОДАЛКИ
+        //  АНАЛИТИКА
+        // ============================================================
+        function openAnalytics() {
+            // Заполняем селект участников
+            const select = document.getElementById('analyticsParticipant');
+            select.innerHTML = '<option value="all">Все</option>';
+            data.members.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m.id;
+                opt.textContent = m.name;
+                select.appendChild(opt);
+            });
+            // Устанавливаем период по умолчанию – последние 30 дней
+            const end = new Date();
+            const start = new Date();
+            start.setDate(start.getDate() - 30);
+            document.getElementById('analyticsStart').value = start.toISOString().slice(0,10);
+            document.getElementById('analyticsEnd').value = end.toISOString().slice(0,10);
+            document.getElementById('analyticsResult').innerHTML = '';
+            const canvas = document.getElementById('analyticsChart');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            openModal('analyticsModal');
+        }
+
+        function closeAnalytics() { closeModal('analyticsModal'); }
+
+        function showAnalytics() {
+            const startStr = document.getElementById('analyticsStart').value;
+            const endStr = document.getElementById('analyticsEnd').value;
+            const participantId = document.getElementById('analyticsParticipant').value;
+            if (!startStr || !endStr) {
+                alert('Выберите период');
+                return;
+            }
+            const start = new Date(startStr);
+            const end = new Date(endStr);
+            end.setHours(23,59,59,999);
+            if (start > end) {
+                alert('Дата начала не может быть позже даты окончания');
+                return;
+            }
+
+            // Получаем все события за период
+            let events = getEventsForPeriod(start, end);
+            // Фильтруем по участнику
+            if (participantId !== 'all') {
+                events = events.filter(ev => ev.participantId === participantId);
+            }
+            // Группируем по названию события
+            const groups = {};
+            events.forEach(ev => {
+                const key = ev.name;
+                if (!groups[key]) groups[key] = 0;
+                const duration = (new Date(ev.end) - new Date(ev.start)) / (1000 * 60 * 60); // часы
+                groups[key] += duration;
+            });
+
+            const resultDiv = document.getElementById('analyticsResult');
+            if (Object.keys(groups).length === 0) {
+                resultDiv.innerHTML = '<p style="color:var(--text-secondary);">Нет данных за выбранный период</p>';
+                const canvas = document.getElementById('analyticsChart');
+                const ctx = canvas.getContext('2d');
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                return;
+            }
+
+            // Сортируем по убыванию
+            const sorted = Object.entries(groups).sort((a,b) => b[1] - a[1]);
+            let tableHtml = `<table class="analytics-table"><tr><th>Событие</th><th>Время</th></tr>`;
+            sorted.forEach(([name, hours]) => {
+                const h = Math.floor(hours);
+                const m = Math.round((hours - h) * 60);
+                tableHtml += `<tr><td>${name}</td><td>${h} ч ${m} мин</td></tr>`;
+            });
+            tableHtml += `</table>`;
+            resultDiv.innerHTML = tableHtml;
+
+            // Рисуем круговую диаграмму
+            drawPieChart(sorted);
+        }
+
+        function drawPieChart(data) {
+            const canvas = document.getElementById('analyticsChart');
+            const ctx = canvas.getContext('2d');
+            const width = canvas.width;
+            const height = canvas.height;
+            ctx.clearRect(0, 0, width, height);
+
+            const total = data.reduce((sum, [, val]) => sum + val, 0);
+            if (total === 0) return;
+
+            const centerX = width / 2;
+            const centerY = height / 2;
+            const radius = Math.min(width, height) / 2 - 20;
+            let startAngle = -Math.PI / 2;
+
+            data.forEach(([name, value], index) => {
+                const sliceAngle = (value / total) * 2 * Math.PI;
+                const color = COLORS[index % COLORS.length];
+
+                ctx.beginPath();
+                ctx.moveTo(centerX, centerY);
+                ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+                ctx.closePath();
+                ctx.fillStyle = color;
+                ctx.fill();
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Легенда (просто текст)
+                const midAngle = startAngle + sliceAngle / 2;
+                const labelRadius = radius * 0.65;
+                const labelX = centerX + Math.cos(midAngle) * labelRadius;
+                const labelY = centerY + Math.sin(midAngle) * labelRadius;
+                const percent = ((value / total) * 100).toFixed(1);
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(percent + '%', labelX, labelY);
+
+                startAngle += sliceAngle;
+            });
+
+            // Легенда снизу
+            let legendY = height - 10;
+            let legendX = 10;
+            ctx.font = '11px sans-serif';
+            data.forEach(([name], index) => {
+                const color = COLORS[index % COLORS.length];
+                ctx.fillStyle = color;
+                ctx.fillRect(legendX, legendY, 12, 12);
+                ctx.fillStyle = 'var(--text)';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(name, legendX + 16, legendY + 6);
+                legendX += ctx.measureText(name).width + 30;
+                if (legendX > width - 20) {
+                    legendX = 10;
+                    legendY += 20;
+                }
+            });
+        }
+
+        // ============================================================
+        //  МОДАЛКИ (общие)
         // ============================================================
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
@@ -1560,6 +1595,10 @@
             document.querySelectorAll('.view-switch button').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.view === view);
             });
+            // Сбрасываем период для месяца, если переключаемся на него
+            if (view === 'month') {
+                // остаёмся на текущем смещении
+            }
             render();
         }
 
