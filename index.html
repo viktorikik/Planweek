@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Планировщик расписания</title>
+    <style>
+        * { box-sizing: border-box; font-family: sans-serif; }
+        body { background: #f5f7fa; padding: 20px; max-width: 900px; margin: auto; }
+        h1 { text-align: center; color: #1e293b; }
+        .card { background: white; padding: 20px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .form-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 10px; }
+        .form-row input, .form-row select, .form-row button { padding: 8px 12px; border-radius: 8px; border: 1px solid #d1d5db; font-size: 14px; }
+        .form-row button { background: #2563eb; color: white; border: none; cursor: pointer; }
+        .form-row button:hover { background: #1d4ed8; }
+        .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .filters label { display: flex; align-items: center; gap: 5px; background: #eef2f6; padding: 4px 12px; border-radius: 20px; cursor: pointer; }
+        .event { border-left: 4px solid; padding: 8px 12px; margin-bottom: 8px; background: #f8fafc; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .event .time { font-weight: bold; color: #334155; }
+        .event .category { font-size: 12px; background: #e2e8f0; padding: 2px 8px; border-radius: 12px; }
+        .delete-btn { background: #ef4444; color: white; border: none; border-radius: 6px; padding: 2px 10px; cursor: pointer; }
+        #eventList { margin-top: 10px; }
+        .no-events { color: #94a3b8; text-align: center; padding: 20px; }
+    </style>
+</head>
+<body>
+    <h1>📅 Планировщик</h1>
+
+    <div class="card">
+        <h3>➕ Добавить событие</h3>
+        <div class="form-row">
+            <input type="text" id="eventName" placeholder="Название" />
+            <input type="datetime-local" id="eventStart" />
+            <input type="datetime-local" id="eventEnd" />
+            <select id="eventCategory">
+                <option value="Работа">👔 Работа</option>
+                <option value="Дети">🧒 Дети</option>
+                <option value="Спорт">⚽ Спорт</option>
+                <option value="Дом">🏠 Дом</option>
+                <option value="Другое">📌 Другое</option>
+            </select>
+            <button id="addBtn">Добавить</button>
+        </div>
+        <div class="form-row">
+            <input type="text" id="eventPerson" placeholder="Кто участвует (необязательно)" style="flex:1;"/>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="filters" id="filtersContainer">
+            <label><input type="checkbox" value="Работа" checked /> 👔 Работа</label>
+            <label><input type="checkbox" value="Дети" checked /> 🧒 Дети</label>
+            <label><input type="checkbox" value="Спорт" checked /> ⚽ Спорт</label>
+            <label><input type="checkbox" value="Дом" checked /> 🏠 Дом</label>
+            <label><input type="checkbox" value="Другое" checked /> 📌 Другое</label>
+        </div>
+        <div id="eventList"></div>
+    </div>
+
+    <script>
+        // --- Работа с localStorage ---
+        function loadEvents() {
+            const data = localStorage.getItem('scheduleEvents');
+            return data ? JSON.parse(data) : [];
+        }
+        function saveEvents(events) {
+            localStorage.setItem('scheduleEvents', JSON.stringify(events));
+        }
+
+        // --- Цвета категорий ---
+        const categoryColors = {
+            'Работа': '#3b82f6',
+            'Дети': '#8b5cf6',
+            'Спорт': '#22c55e',
+            'Дом': '#f59e0b',
+            'Другое': '#6b7280'
+        };
+
+        // --- Рендер списка событий ---
+        function renderEvents() {
+            const events = loadEvents();
+            const list = document.getElementById('eventList');
+            const filters = document.querySelectorAll('#filtersContainer input[type="checkbox"]');
+            const activeCategories = Array.from(filters)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            // Сортировка по времени начала
+            events.sort((a, b) => new Date(a.start) - new Date(b.start));
+
+            const filtered = events.filter(e => activeCategories.includes(e.category));
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="no-events">Нет событий на выбранные категории</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map((e, index) => {
+                const start = new Date(e.start);
+                const end = new Date(e.end);
+                const dateStr = start.toLocaleDateString('ru-RU');
+                const timeStr = start.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) 
+                                + ' – ' + end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const person = e.person ? `👤 ${e.person}` : '';
+                return `
+                    <div class="event" style="border-color: ${categoryColors[e.category] || '#6b7280'}">
+                        <div>
+                            <strong>${e.name}</strong>
+                            <span class="time">${dateStr} ${timeStr}</span>
+                            <span class="category">${e.category}</span>
+                            ${person}
+                        </div>
+                        <button class="delete-btn" data-index="${index}">✕</button>
+                    </div>
+                `;
+            }).join('');
+
+            // Вешаем обработчики на кнопки удаления
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const idx = parseInt(this.dataset.index);
+                    const events = loadEvents();
+                    // Удаляем по индексу, но индексы соответствуют отфильтрованному массиву, поэтому надо удалять по реальному индексу.
+                    // Чтобы не усложнять, будем удалять по ID (добавим уникальный id при создании)
+                    // Переделаем: при создании будем давать уникальный id.
+                    // Но для простоты перезагрузим список и удалим по совпадению полей (лучше добавить id).
+                    // Сделаем проще: перепишем генерацию с использованием id.
+                });
+            });
+        }
+
+        // --- Добавление события ---
+        function addEvent() {
+            const name = document.getElementById('eventName').value.trim();
+            const start = document.getElementById('eventStart').value;
+            const end = document.getElementById('eventEnd').value;
+            const category = document.getElementById('eventCategory').value;
+            const person = document.getElementById('eventPerson').value.trim();
+
+            if (!name || !start || !end) {
+                alert('Заполните название, время начала и конца!');
+                return;
+            }
+            if (new Date(start) >= new Date(end)) {
+                alert('Время окончания должно быть позже времени начала');
+                return;
+            }
+
+            const events = loadEvents();
+            const newEvent = {
+                id: Date.now() + Math.random(), // уникальный идентификатор
+                name,
+                start,
+                end,
+                category,
+                person
+            };
+            events.push(newEvent);
+            saveEvents(events);
+            renderEvents();
+
+            // Очистка полей
+            document.getElementById('eventName').value = '';
+            document.getElementById('eventStart').value = '';
+            document.getElementById('eventEnd').value = '';
+            document.getElementById('eventPerson').value = '';
+        }
+
+        // --- Обработчик удаления (переписываем рендер с id) ---
+        // Обновим функцию renderEvents с учетом id
+        // (полный код будет чуть длиннее, но я покажу основной принцип)
+        // Для краткости я перепишу функцию удаления через делегирование.
+
+        // Новая версия renderEvents с обработкой удаления через клик по контейнеру
+        function renderEvents() {
+            const events = loadEvents();
+            const list = document.getElementById('eventList');
+            const filters = document.querySelectorAll('#filtersContainer input[type="checkbox"]');
+            const activeCategories = Array.from(filters)
+                .filter(cb => cb.checked)
+                .map(cb => cb.value);
+
+            events.sort((a, b) => new Date(a.start) - new Date(b.start));
+            const filtered = events.filter(e => activeCategories.includes(e.category));
+
+            if (filtered.length === 0) {
+                list.innerHTML = '<div class="no-events">Нет событий на выбранные категории</div>';
+                return;
+            }
+
+            list.innerHTML = filtered.map(e => {
+                const start = new Date(e.start);
+                const end = new Date(e.end);
+                const dateStr = start.toLocaleDateString('ru-RU');
+                const timeStr = start.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) 
+                                + ' – ' + end.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+                const person = e.person ? `👤 ${e.person}` : '';
+                return `
+                    <div class="event" style="border-color: ${categoryColors[e.category] || '#6b7280'}" data-id="${e.id}">
+                        <div>
+                            <strong>${e.name}</strong>
+                            <span class="time">${dateStr} ${timeStr}</span>
+                            <span class="category">${e.category}</span>
+                            ${person}
+                        </div>
+                        <button class="delete-btn" data-id="${e.id}">✕</button>
+                    </div>
+                `;
+            }).join('');
+
+            // Удаление через делегирование (клик по кнопке)
+            list.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const id = this.dataset.id;
+                    if (confirm('Удалить событие?')) {
+                        let events = loadEvents();
+                        events = events.filter(ev => ev.id != id);
+                        saveEvents(events);
+                        renderEvents();
+                    }
+                });
+            });
+        }
+
+        // --- Инициализация ---
+        document.getElementById('addBtn').addEventListener('click', addEvent);
+
+        // Фильтры – перерендер при изменении
+        document.querySelectorAll('#filtersContainer input[type="checkbox"]').forEach(cb => {
+            cb.addEventListener('change', renderEvents);
+        });
+
+        // Первый рендер
+        renderEvents();
+    </script>
+</body>
+</html>
