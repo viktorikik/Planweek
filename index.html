@@ -284,19 +284,18 @@
         .event-actions .delete-event:hover {
             color: #ef4444;
         }
-        /* Сетка */
         .grid-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
             margin: 0 -12px;
             padding: 0 12px;
-            touch-action: pan-x;  /* разрешаем горизонтальную прокрутку */
+            touch-action: pan-y; /* разрешаем вертикальную прокрутку */
         }
         .grid-scroll {
             display: flex;
             gap: 4px;
             min-width: 700px;
-            touch-action: pan-x;
+            touch-action: pan-y;
         }
         .grid-day {
             flex: 1;
@@ -327,6 +326,7 @@
             border-radius: 0 0 12px 12px;
             overflow: hidden;
             transition: background 0.2s;
+            touch-action: pan-y;
         }
         .grid-hour {
             position: absolute;
@@ -352,7 +352,7 @@
             height: 32px;
             z-index: 2;
             pointer-events: none;
-            opacity: 0.6;
+            opacity: 0.5;
         }
         .grid-event-block {
             position: absolute;
@@ -413,7 +413,6 @@
             font-size: 9px;
             opacity: 0.8;
         }
-        /* Модалки */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -462,7 +461,8 @@
         }
         .modal input[type="text"],
         .modal input[type="datetime-local"],
-        .modal select {
+        .modal select,
+        .modal textarea {
             width: 100%;
             padding: 10px 14px;
             border: 1px solid var(--border);
@@ -472,6 +472,12 @@
             background: var(--card-bg);
             color: var(--text);
             transition: background 0.2s, color 0.2s;
+            font-family: inherit;
+        }
+        .modal textarea {
+            border-radius: 20px;
+            resize: vertical;
+            min-height: 60px;
         }
         .modal .color-select {
             display: flex;
@@ -482,7 +488,7 @@
         .modal .color-option {
             width: 40px;
             height: 40px;
-            clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+            border-radius: 50%;
             cursor: pointer;
             transition: 0.2s;
             border: 3px solid transparent;
@@ -686,8 +692,9 @@
                 <input type="checkbox" id="allowOverlap" />
                 <label for="allowOverlap">✅ Разрешено пересечение (не считать конфликтом)</label>
             </div>
+            <label>Заметки</label>
+            <textarea id="eventNotes" placeholder="Дополнительная информация..." rows="2"></textarea>
             <input type="hidden" id="editingEventId" value="" />
-            <input type="hidden" id="editingOriginalDate" value="" />
             <button class="btn-primary" onclick="saveEvent()" id="saveEventBtn">Сохранить</button>
             <button class="btn-secondary" onclick="closeEvent()" style="margin-top:8px;">Отмена</button>
         </div>
@@ -709,7 +716,16 @@
         // ============================================================
         //  ДАННЫЕ И ХРАНИЛИЩЕ
         // ============================================================
-        const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#ef4444', '#f59e0b', '#22c55e', '#14b8a6'];
+        // Новые стильные цвета (Material Design)
+        const COLORS = [
+            '#4F46E5', // индиго
+            '#7C3AED', // фиолетовый
+            '#EC4899', // розовый
+            '#EF4444', // красный
+            '#F59E0B', // янтарный
+            '#10B981', // изумрудный
+            '#06B6D4'  // циан
+        ];
 
         function loadData() {
             const raw = localStorage.getItem('familyPlannerData');
@@ -790,10 +806,10 @@
                     return diffDays % (7 * rec.interval) === 0;
                 }
                 case 'weekly_workdays': {
+                    // 5/2: повторяется каждый будний день с интервалом в днях
                     const day = target.getDay();
                     if (day === 0 || day === 6) return false; // выходные
-                    if (target.getDay() !== baseDate.getDay()) return false;
-                    return diffDays % (7 * rec.interval) === 0;
+                    return diffDays % rec.interval === 0;
                 }
                 case 'monthly': {
                     if (target.getDate() !== baseDate.getDate()) return false;
@@ -923,7 +939,7 @@
                                     ${name}
                                 </span>
                                 <div class="event-actions">
-                                    <button onclick="editEvent('${ev.id}', '${date.toISOString().slice(0,10)}')" title="Редактировать">✎</button>
+                                    <button onclick="editEvent('${ev.id}')" title="Редактировать">✎</button>
                                     <button class="delete-event" onclick="deleteEvent('${ev.id}')" title="Удалить">✕</button>
                                 </div>
                             </div>
@@ -940,7 +956,7 @@
             return ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index];
         }
 
-        // ----- Сетка с визуализацией наложений -----
+        // ----- Сетка -----
         function renderGrid() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(weekOffset);
@@ -954,7 +970,7 @@
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
 
-                // Для каждого часа собираем уникальные цвета участников (для полосок)
+                // Собираем цвета участников для каждого часа (для полосок)
                 const hourColors = new Array(24).fill(null).map(() => []);
                 for (let h = 0; h < 24; h++) {
                     const hourStart = h;
@@ -978,29 +994,26 @@
                 html += `<div class="grid-day-header">${getDayName(index)}<br><span class="date">${formatDate(date)}</span></div>`;
                 html += `<div class="grid-timeline" style="height:${totalHeight}px;" data-date="${date.toISOString().slice(0,10)}">`;
 
-                // Рисуем часы и фоновые наложения
                 for (let h = 0; h < 24; h++) {
                     const top = h * hourHeight;
                     const colors = hourColors[h];
                     const hasOverlap = colors.length > 1;
 
-                    // Фоновый слой для полосок (если есть наложение)
+                    // Фоновые полоски при наложении
                     if (hasOverlap) {
                         let gradient = '';
                         if (colors.length === 2) {
                             gradient = `linear-gradient(45deg, ${colors[0]} 50%, ${colors[1]} 50%)`;
                         } else {
-                            // для 3+ цветов делаем повторяющийся градиент
                             const parts = colors.map((c, i) => `${c} ${(i/colors.length)*100}%, ${c} ${((i+1)/colors.length)*100}%`).join(', ');
                             gradient = `repeating-linear-gradient(45deg, ${parts})`;
                         }
                         html += `<div class="grid-hour-overlay" style="top:${top}px; height:${hourHeight}px; background:${gradient};"></div>`;
                     }
 
-                    // Определяем, есть ли неразрешённый конфликт для подсветки
+                    // Определяем, есть ли неразрешённый конфликт
                     let hasRealConflict = false;
                     if (colors.length > 1) {
-                        // Проверим, есть ли среди событий в этом часе хотя бы одно с allowOverlap=false
                         const eventsInHour = dayEvents.filter(ev => {
                             const s = new Date(ev.start);
                             const e = new Date(ev.end);
@@ -1028,14 +1041,14 @@
                     const height = duration * hourHeight;
                     const color = getMemberColor(ev.participantId);
                     const name = getMemberName(ev.participantId);
-                    // Проверяем, является ли это событие участником неразрешённого конфликта
                     const isConflict = hasConflict(ev, dayEvents);
                     const conflictClass = isConflict ? ' conflict' : '';
                     const badge = isConflict ? '<span class="conflict-badge">⚠️</span>' : '';
                     html += `
                         <div class="grid-event-block${conflictClass}" style="top:${top}px; height:${height}px; background:${color};"
                              data-event-id="${ev.id}" data-date="${date.toISOString().slice(0,10)}"
-                             data-start-hour="${startHour}" data-duration="${duration}">
+                             data-start-hour="${startHour}" data-duration="${duration}"
+                             onclick="editEvent('${ev.id}')">
                             ${badge}
                             <strong>${ev.name}</strong>
                             <span class="time">${formatTime(start)} – ${formatTime(end)}</span>
@@ -1050,7 +1063,7 @@
             container.innerHTML = html;
 
             initDragAndDrop();
-            // Свайп для сетки отключаем
+            // Отключаем свайп для сетки
             const containerEl = document.getElementById('weekContainer');
             containerEl.removeEventListener('touchstart', onSwipeStart);
             containerEl.removeEventListener('touchmove', onSwipeMove);
@@ -1258,6 +1271,7 @@
             document.getElementById('editingEventId').value = '';
             document.getElementById('saveEventBtn').textContent = 'Сохранить';
             document.getElementById('eventName').value = '';
+            document.getElementById('eventNotes').value = '';
             const now = new Date();
             document.getElementById('eventStart').value = toLocalDatetime(now);
             const end = new Date(now);
@@ -1267,37 +1281,28 @@
             document.getElementById('recurrenceInterval').value = 1;
             document.getElementById('recurrenceUntil').value = '';
             document.getElementById('allowOverlap').checked = false;
-            document.getElementById('editingOriginalDate').value = '';
             populateParticipantSelect();
             openModal('eventModal');
         }
 
-        function editEvent(eventId, originalDateStr) {
+        function editEvent(eventId) {
             const ev = data.events.find(e => e.id === eventId);
             if (!ev) return;
             document.getElementById('eventModalTitle').textContent = '✎ Редактировать событие';
             document.getElementById('editingEventId').value = eventId;
             document.getElementById('saveEventBtn').textContent = 'Обновить';
 
-            let baseDate = originalDateStr ? new Date(originalDateStr) : new Date(ev.start);
-            if (!ev.recurrence || ev.recurrence.type === 'none') {
-                baseDate = new Date(ev.start);
-            }
-            document.getElementById('editingOriginalDate').value = baseDate.toISOString().slice(0,10);
+            // Всегда используем оригинальную дату и время
+            const start = new Date(ev.start);
+            const end = new Date(ev.end);
 
             document.getElementById('eventName').value = ev.name;
+            document.getElementById('eventNotes').value = ev.notes || '';
             document.getElementById('eventParticipant').value = ev.participantId;
             document.getElementById('allowOverlap').checked = ev.allowOverlap || false;
 
-            const origStart = new Date(ev.start);
-            const origEnd = new Date(ev.end);
-            const adjustedStart = new Date(baseDate);
-            adjustedStart.setHours(origStart.getHours(), origStart.getMinutes(), 0, 0);
-            const adjustedEnd = new Date(baseDate);
-            adjustedEnd.setHours(origEnd.getHours(), origEnd.getMinutes(), 0, 0);
-
-            document.getElementById('eventStart').value = toLocalDatetime(adjustedStart);
-            document.getElementById('eventEnd').value = toLocalDatetime(adjustedEnd);
+            document.getElementById('eventStart').value = toLocalDatetime(start);
+            document.getElementById('eventEnd').value = toLocalDatetime(end);
 
             if (ev.recurrence) {
                 document.getElementById('recurrenceType').value = ev.recurrence.type;
@@ -1337,6 +1342,7 @@
             const recInterval = parseInt(document.getElementById('recurrenceInterval').value) || 1;
             const recUntil = document.getElementById('recurrenceUntil').value;
             const allowOverlap = document.getElementById('allowOverlap').checked;
+            const notes = document.getElementById('eventNotes').value.trim();
 
             if (!name || !start || !end || !participantId) {
                 alert('Заполните все поля!');
@@ -1363,6 +1369,7 @@
                 ev.participantId = participantId;
                 ev.recurrence = recurrence;
                 ev.allowOverlap = allowOverlap;
+                ev.notes = notes;
                 eventObj = ev;
             } else {
                 eventObj = {
@@ -1372,7 +1379,8 @@
                     end,
                     participantId,
                     recurrence,
-                    allowOverlap
+                    allowOverlap,
+                    notes
                 };
             }
 
