@@ -643,14 +643,14 @@
             -webkit-overflow-scrolling: touch;
             margin: 0 -12px;
             padding: 0 12px;
-            max-height: 80vh; /* чтобы была вертикальная прокрутка */
+            max-height: 80vh;
             touch-action: auto;
         }
         .grid-scroll {
             display: flex;
             gap: 4px;
             min-width: 700px;
-            touch-action: pan-x;
+            touch-action: auto;
         }
         .grid-day {
             flex: 1;
@@ -661,6 +661,7 @@
             padding: 0 4px 4px 4px;
             transition: background 0.2s;
             border: 1px solid var(--cell-border);
+            touch-action: auto;
         }
         .grid-day-header {
             text-align: center;
@@ -682,6 +683,7 @@
             border-radius: 0 0 var(--radius-md) var(--radius-md);
             overflow: hidden;
             transition: background 0.2s;
+            touch-action: auto;
         }
         .grid-hour {
             position: absolute;
@@ -724,7 +726,7 @@
             cursor: pointer;
             z-index: 5;
             transition: box-shadow 0.2s, opacity 0.2s;
-            touch-action: none;
+            touch-action: auto;
             min-height: 20px;
         }
         .grid-event-block.conflict {
@@ -1039,10 +1041,45 @@
             margin-top: 16px;
             display: flex;
             justify-content: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: flex-start;
         }
         .chart-container canvas {
             max-width: 100%;
             max-height: 250px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .chart-legend {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            padding: 8px 0;
+            min-width: 120px;
+        }
+        .chart-legend .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+        .chart-legend .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            box-shadow: 0 1px 4px rgba(0,0,0,0.1);
+        }
+        .chart-legend .legend-label {
+            display: flex;
+            justify-content: space-between;
+            flex: 1;
+        }
+        .chart-legend .legend-percent {
+            color: var(--text-muted);
+            margin-left: 8px;
         }
 
         /* ============================================================
@@ -1086,7 +1123,7 @@
         .color-option {
             width: 40px;
             height: 40px;
-            border-radius: 50%;
+            border-radius: 50% !important; /* круги */
             cursor: pointer;
             transition: var(--transition-fast);
             border: 3px solid transparent;
@@ -1109,7 +1146,8 @@
         .member-row .color-dot {
             width: 24px;
             height: 24px;
-            border-radius: 50%;
+            border-radius: 50% !important; /* круги */
+            flex-shrink: 0;
         }
         .member-row span {
             flex: 1;
@@ -1216,6 +1254,13 @@
             .grid-wrapper {
                 max-height: 70vh;
             }
+            .chart-container canvas {
+                max-height: 180px;
+            }
+            .chart-legend {
+                min-width: 80px;
+                font-size: 12px;
+            }
         }
 
         @media (min-width: 700px) {
@@ -1279,6 +1324,9 @@
             }
             .grid-wrapper {
                 max-height: 80vh;
+            }
+            .chart-container canvas {
+                max-height: 250px;
             }
         }
     </style>
@@ -1426,7 +1474,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА АНАЛИТИКИ (с фильтром по названию) -->
+    <!-- МОДАЛКА АНАЛИТИКИ -->
     <div class="modal-overlay" id="analyticsModal">
         <div class="modal">
             <div class="modal-header">
@@ -1445,8 +1493,9 @@
             <input type="text" id="analyticsEventName" placeholder="Например: бассейн" />
             <button class="btn-primary" onclick="showAnalytics()" style="margin-top:12px;">Показать</button>
             <div class="analytics-result" id="analyticsResult"></div>
-            <div class="chart-container">
+            <div class="chart-container" id="chartContainer">
                 <canvas id="analyticsChart" width="400" height="300"></canvas>
+                <div class="chart-legend" id="chartLegend"></div>
             </div>
         </div>
     </div>
@@ -1462,7 +1511,7 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ (для периодических) -->
+    <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ -->
     <div class="modal-overlay" id="deleteChoiceModal">
         <div class="modal">
             <div class="modal-header">
@@ -1481,7 +1530,6 @@
     <script>
         // ============================================================
         //   ПОЛНЫЙ JS-КОД
-        //   с поддержкой новых повторений, статусов, фильтра аналитики
         // ============================================================
 
         // ---------- ДАННЫЕ ----------
@@ -1572,7 +1620,7 @@
             return d.toISOString().slice(0,10);
         }
 
-        // ---------- СОБЫТИЯ С ПОВТОРЕНИЯМИ И ИСКЛЮЧЕНИЯМИ ----------
+        // ---------- СОБЫТИЯ ----------
         function isEventOnDate(event, date) {
             const baseStart = new Date(event.start);
             const baseDate = dateOnly(baseStart);
@@ -1777,7 +1825,7 @@
             return ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index];
         }
 
-        // ---------- НЕДЕЛЬНАЯ СЕТКА С ДОРОЖКАМИ ----------
+        // ---------- СЕТКА ----------
         function renderGrid() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(periodOffset);
@@ -1942,7 +1990,7 @@
             initSwipe('month');
         }
 
-        // ---------- ПРОСМОТР ДНЯ В МЕСЯЦЕ ----------
+        // ---------- ПРОСМОТР ДНЯ ----------
         function showDayEvents(dateStr) {
             const date = new Date(dateStr);
             if (isNaN(date.getTime())) {
@@ -2072,6 +2120,7 @@
             text = text.replace(/\s+/g, ' ').trim();
             let result = { name: '', start: null, end: null, participantId: null, participantName: '' };
 
+            // Время
             let timeMatch = null;
             let timeRegex = /(?:в\s*)?(\d{1,2}):(\d{2})\s*(?:[уа])?/i;
             let match = text.match(timeRegex);
@@ -2103,6 +2152,7 @@
                 }
             }
 
+            // Дата
             let dateObj = null;
             let dateRegex = /(сегодня|завтра|послезавтра)/i;
             let dateMatch = text.match(dateRegex);
@@ -2168,6 +2218,7 @@
                 }
             }
 
+            // Участник
             let participantName = '';
             let participantMatch = text.match(/(?:с|со)\s+([А-Яа-яЁё]+)/i);
             if (participantMatch) {
@@ -2298,7 +2349,6 @@
                 return;
             }
 
-            // Для типов смен фиксируем интервал
             let finalRecType = recType;
             let finalInterval = recInterval;
             if (recType === 'shift_2_2') {
@@ -2318,7 +2368,6 @@
                 ev.name = name; ev.start = start; ev.end = end;
                 ev.participantId = participantId; ev.recurrence = recurrence;
                 ev.allowOverlap = allowOverlap; ev.notes = notes; ev.status = status;
-                // exceptions не меняем при редактировании
                 eventObj = ev;
             } else {
                 eventObj = { id: generateId(), name, start, end, participantId, recurrence, allowOverlap, notes, status, exceptions: [] };
@@ -2472,7 +2521,7 @@
             render();
         }
 
-        // ---------- АНАЛИТИКА (с фильтром по названию) ----------
+        // ---------- АНАЛИТИКА ----------
         function openAnalytics() {
             const select = document.getElementById('analyticsParticipant');
             select.innerHTML = '<option value="all">Все</option>';
@@ -2492,6 +2541,7 @@
             const canvas = document.getElementById('analyticsChart');
             const ctx = canvas.getContext('2d');
             ctx.clearRect(0, 0, canvas.width, canvas.height);
+            document.getElementById('chartLegend').innerHTML = '';
             openModal('analyticsModal');
         }
 
@@ -2523,7 +2573,6 @@
                 events = events.filter(ev => ev.name.toLowerCase().includes(eventNameFilter));
             }
 
-            // Группируем по названию события и статусу (но для круговой пока только по названию)
             const groups = {};
             events.forEach(ev => {
                 const key = ev.name;
@@ -2538,6 +2587,7 @@
                 const canvas = document.getElementById('analyticsChart');
                 const ctx = canvas.getContext('2d');
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
+                document.getElementById('chartLegend').innerHTML = '';
                 return;
             }
 
@@ -2546,78 +2596,101 @@
             sorted.forEach(([name, hours]) => {
                 const h = Math.floor(hours);
                 const m = Math.round((hours - h) * 60);
-                // Количество вхождений – подсчитаем события с таким названием
                 const count = events.filter(e => e.name === name).length;
                 tableHtml += `<tr><td>${name}</td><td>${h} ч ${m} мин</td><td>${count}</td></tr>`;
             });
             tableHtml += `</table>`;
             resultDiv.innerHTML = tableHtml;
-            drawPieChart(sorted);
+
+            // Рисуем современную диаграмму
+            drawModernPieChart(sorted);
         }
 
-        function drawPieChart(data) {
+        function drawModernPieChart(data) {
             const canvas = document.getElementById('analyticsChart');
             const ctx = canvas.getContext('2d');
             const width = canvas.width;
             const height = canvas.height;
+            const dpr = window.devicePixelRatio || 1;
+            canvas.width = width * dpr;
+            canvas.height = height * dpr;
+            ctx.scale(dpr, dpr);
             ctx.clearRect(0, 0, width, height);
 
             const total = data.reduce((sum, [, val]) => sum + val, 0);
             if (total === 0) return;
 
+            // Используем пастельные оттенки
+            const pieColors = [
+                '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
+                '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
+            ];
+
             const centerX = width / 2;
             const centerY = height / 2;
-            const radius = Math.min(width, height) / 2 - 20;
+            const radius = Math.min(width, height) / 2 - 30;
+            const shadowBlur = 8;
             let startAngle = -Math.PI / 2;
+
+            const legendData = [];
 
             data.forEach(([name, value], index) => {
                 const sliceAngle = (value / total) * 2 * Math.PI;
-                const color = COLORS[index % COLORS.length];
+                const color = pieColors[index % pieColors.length];
+                const endAngle = startAngle + sliceAngle;
+
+                // Тень
+                ctx.shadowColor = 'rgba(0,0,0,0.1)';
+                ctx.shadowBlur = shadowBlur;
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
 
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
-                ctx.arc(centerX, centerY, radius, startAngle, startAngle + sliceAngle);
+                ctx.arc(centerX, centerY, radius, startAngle, endAngle);
                 ctx.closePath();
                 ctx.fillStyle = color;
                 ctx.fill();
+                ctx.shadowBlur = 0;
                 ctx.strokeStyle = 'white';
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
+                // Процент
                 const midAngle = startAngle + sliceAngle / 2;
                 const labelRadius = radius * 0.65;
                 const labelX = centerX + Math.cos(midAngle) * labelRadius;
                 const labelY = centerY + Math.sin(midAngle) * labelRadius;
                 const percent = ((value / total) * 100).toFixed(1);
                 ctx.fillStyle = 'white';
-                ctx.font = 'bold 12px sans-serif';
+                ctx.font = 'bold 13px system-ui, sans-serif';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
+                ctx.shadowBlur = 0;
                 ctx.fillText(percent + '%', labelX, labelY);
 
-                startAngle += sliceAngle;
+                legendData.push({ name, color, percent });
+                startAngle = endAngle;
             });
 
-            let legendY = height - 10;
-            let legendX = 10;
-            ctx.font = '11px sans-serif';
-            data.forEach(([name], index) => {
-                const color = COLORS[index % COLORS.length];
-                ctx.fillStyle = color;
-                ctx.fillRect(legendX, legendY, 12, 12);
-                ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text-primary') || '#0f0f1a';
-                ctx.textAlign = 'left';
-                ctx.textBaseline = 'middle';
-                ctx.fillText(name, legendX + 16, legendY + 6);
-                legendX += ctx.measureText(name).width + 30;
-                if (legendX > width - 20) {
-                    legendX = 10;
-                    legendY += 20;
-                }
+            // Легенда
+            const legendContainer = document.getElementById('chartLegend');
+            let legendHtml = '';
+            legendData.forEach(item => {
+                legendHtml += `
+                    <div class="legend-item">
+                        <span class="legend-color" style="background:${item.color};"></span>
+                        <span class="legend-label">
+                            <span>${item.name}</span>
+                            <span class="legend-percent">${item.percent}%</span>
+                        </span>
+                    </div>
+                `;
             });
+            legendContainer.innerHTML = legendHtml;
         }
 
-        // ---------- МОДАЛКИ (общие) ----------
+        // ---------- МОДАЛКИ ----------
         function openModal(id) { document.getElementById(id).classList.add('active'); }
         function closeModal(id) { document.getElementById(id).classList.remove('active'); }
         function closeEvent() { closeModal('eventModal'); }
@@ -2661,7 +2734,7 @@
             });
         }
 
-        // ---------- ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ ОТОБРАЖЕНИЯ ----------
+        // ---------- ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ ----------
         function setView(view) {
             currentView = view;
             document.querySelectorAll('.view-toggle button').forEach(btn => {
