@@ -6,7 +6,7 @@
     <title>Планировщик расписания</title>
     <style>
         /* ============================================================
-           1. ПЕРЕМЕННЫЕ – СВЕТЛАЯ ТЕМА (улучшенная контрастность)
+           1. ПЕРЕМЕННЫЕ – СВЕТЛАЯ ТЕМА
            ============================================================ */
         :root {
             --bg-primary: #f2f0ed;
@@ -107,9 +107,6 @@
             --accent-light: rgba(255, 107, 53, 0.2);
         }
 
-        /* ============================================================
-           2. БАЗОВЫЕ СТИЛИ
-           ============================================================ */
         * {
             margin: 0;
             padding: 0;
@@ -149,9 +146,6 @@
             margin: 0 auto;
         }
 
-        /* ============================================================
-           3. ШАПКА
-           ============================================================ */
         .app-header {
             display: flex;
             justify-content: space-between;
@@ -244,7 +238,6 @@
             width: 100%;
             margin-bottom: var(--spacing-md);
         }
-
         .btn-row .btn {
             flex: 1 1 0;
             min-width: 140px;
@@ -264,7 +257,6 @@
             appearance: none;
             border: none;
         }
-
         .btn-row .btn-primary {
             background: var(--accent-color);
             color: white;
@@ -277,7 +269,6 @@
         .btn-row .btn-primary:active {
             transform: translateY(0);
         }
-
         .btn-row .btn-secondary {
             background: transparent;
             border: 1.5px solid var(--text-muted);
@@ -317,9 +308,6 @@
             transform: scale(0.95);
         }
 
-        /* ============================================================
-           4. НАВИГАЦИЯ ПО НЕДЕЛЕ/МЕСЯЦУ
-           ============================================================ */
         .calendar-wrap {
             background: rgba(128, 128, 140, 0.04);
             border-radius: var(--radius-md);
@@ -328,7 +316,6 @@
             touch-action: pan-y;
             user-select: none;
         }
-
         .calendar-header {
             display: flex;
             flex-wrap: nowrap;
@@ -337,7 +324,6 @@
             padding: 0 4px 12px;
             gap: var(--spacing-sm);
         }
-
         .month-nav-wrapper {
             display: flex;
             align-items: center;
@@ -346,7 +332,6 @@
             justify-content: center;
             min-width: 0;
         }
-
         .month-nav {
             display: flex;
             gap: var(--spacing-xs);
@@ -377,7 +362,6 @@
         .month-nav button:active {
             transform: scale(0.93);
         }
-
         #periodLabel {
             font-size: 22px;
             font-weight: 700;
@@ -387,7 +371,6 @@
             margin: 0 6px;
             letter-spacing: 0.5px;
         }
-
         .today-btn {
             background: var(--accent-color);
             border: none;
@@ -414,9 +397,6 @@
             transform: translateY(0);
         }
 
-        /* ============================================================
-           5. ФИЛЬТРЫ
-           ============================================================ */
         .filters {
             display: flex;
             flex-wrap: wrap;
@@ -458,9 +438,6 @@
             flex-shrink: 0;
         }
 
-        /* ============================================================
-           6. МЕСЯЧНЫЙ ВИД
-           ============================================================ */
         .weekdays {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
@@ -472,13 +449,11 @@
             padding: 8px 0 6px;
             text-transform: uppercase;
         }
-
         .days-grid {
             display: grid;
             grid-template-columns: repeat(7, 1fr);
             gap: var(--spacing-sm);
         }
-
         .day-cell {
             border-radius: 18px;
             display: flex;
@@ -513,7 +488,6 @@
             color: var(--accent-color);
             font-weight: 700;
         }
-
         .day-number {
             font-weight: 600;
             font-size: 16px;
@@ -521,7 +495,6 @@
             line-height: 1.2;
             margin-bottom: 2px;
         }
-
         .day-dots {
             display: flex;
             flex-wrap: wrap;
@@ -536,16 +509,12 @@
             border: 1px solid rgba(0,0,0,0.1);
         }
 
-        /* ============================================================
-           7. СПИСОК НЕДЕЛИ
-           ============================================================ */
         .week-list {
             display: flex;
             flex-direction: column;
             gap: 6px;
             padding: var(--spacing-xs) 0;
         }
-
         .week-row {
             display: grid;
             grid-template-columns: 50px 80px 1fr;
@@ -555,14 +524,13 @@
             border-radius: 14px;
             padding: var(--spacing-sm) var(--spacing-md);
             border: 1px solid var(--cell-border);
-            cursor: pointer;
+            cursor: default;
             transition: var(--transition-fast);
         }
         .week-row:hover {
             background: var(--day-hover);
             transform: translateX(4px);
         }
-
         .week-row .date-col {
             font-weight: 700;
             font-size: 16px;
@@ -575,7 +543,6 @@
             color: var(--text-secondary);
             text-align: center;
         }
-
         .week-row .events-col {
             display: flex;
             flex-wrap: wrap;
@@ -594,13 +561,17 @@
             white-space: normal;
             word-break: break-word;
             max-width: 100%;
-            cursor: default;
+            cursor: pointer;
             transition: var(--transition-fast);
             user-select: none;
             display: inline-flex;
             align-items: center;
             gap: 4px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .event-chip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
         }
         .event-chip .status-icon {
             font-size: 14px;
@@ -628,16 +599,12 @@
         .event-chip .chip-actions .delete-chip:hover {
             color: #e55a5a;
         }
-
         .empty-events {
             color: var(--text-muted);
             font-size: 13px;
             font-style: italic;
         }
 
-        /* ============================================================
-           8. НЕДЕЛЬНАЯ СЕТКА (ГРИД) – с дорожками и статусами
-           ============================================================ */
         .grid-wrapper {
             overflow: auto;
             -webkit-overflow-scrolling: touch;
@@ -711,7 +678,6 @@
             pointer-events: none;
             opacity: 0.5;
         }
-        /* Блок события с дорожками */
         .grid-event-block {
             position: absolute;
             border-radius: 6px;
@@ -728,6 +694,9 @@
             transition: box-shadow 0.2s, opacity 0.2s;
             touch-action: auto;
             min-height: 20px;
+        }
+        .grid-event-block:hover {
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
         }
         .grid-event-block.conflict {
             outline: 2px solid #ef4444;
@@ -769,9 +738,6 @@
             opacity: 0.8;
         }
 
-        /* ============================================================
-           9. МОДАЛЬНЫЕ ОКНА
-           ============================================================ */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -790,12 +756,10 @@
             display: flex;
             animation: modalFadeIn 0.25s ease forwards;
         }
-
         @keyframes modalFadeIn {
             0% { opacity: 0; transform: scale(0.96); }
             100% { opacity: 1; transform: scale(1); }
         }
-
         .modal {
             background: var(--modal-bg);
             border-radius: 32px;
@@ -807,7 +771,6 @@
             box-shadow: 0 40px 80px rgba(0, 0, 0, 0.3);
             border: 1px solid var(--cell-border);
         }
-
         .modal-header {
             display: flex;
             justify-content: space-between;
@@ -847,11 +810,11 @@
             font-size: 15px;
             gap: var(--spacing-sm);
             transition: var(--transition-fast);
+            cursor: pointer;
         }
         .modal-dish:hover {
             background: var(--card-hover-bg);
         }
-
         .modal-dish .dish-name {
             flex: 1;
             min-width: 80px;
@@ -886,7 +849,6 @@
             font-size: 14px;
             margin-left: 6px;
         }
-
         .modal-empty {
             color: var(--text-muted);
             text-align: center;
@@ -894,9 +856,6 @@
             font-size: 15px;
         }
 
-        /* ============================================================
-           10. ФОРМЫ В МОДАЛЬНЫХ ОКНАХ
-           ============================================================ */
         .modal label {
             display: block;
             font-weight: 500;
@@ -1013,9 +972,6 @@
             transform: translateY(-2px);
         }
 
-        /* ============================================================
-           11. АНАЛИТИКА
-           ============================================================ */
         .analytics-result {
             margin-top: 16px;
         }
@@ -1082,9 +1038,6 @@
             margin-left: 8px;
         }
 
-        /* ============================================================
-           12. ДОПОЛНИТЕЛЬНЫЕ МЕЛОЧИ
-           ============================================================ */
         .mode-switch {
             display: flex;
             gap: 6px;
@@ -1123,7 +1076,7 @@
         .color-option {
             width: 40px;
             height: 40px;
-            border-radius: 50% !important; /* круги */
+            border-radius: 50% !important;
             cursor: pointer;
             transition: var(--transition-fast);
             border: 3px solid transparent;
@@ -1146,7 +1099,7 @@
         .member-row .color-dot {
             width: 24px;
             height: 24px;
-            border-radius: 50% !important; /* круги */
+            border-radius: 50% !important;
             flex-shrink: 0;
         }
         .member-row span {
@@ -1161,9 +1114,6 @@
             cursor: pointer;
         }
 
-        /* ============================================================
-           13. АДАПТИВНОСТЬ
-           ============================================================ */
         @media (max-width: 480px) {
             .app {
                 padding: var(--spacing-md) var(--spacing-sm);
@@ -1370,7 +1320,7 @@
             <button data-view="month" onclick="setView('month')">📅 Месяц</button>
         </div>
 
-        <!-- ОСНОВНОЙ КОНТЕЙНЕР -->
+        <!-- КОНТЕЙНЕР -->
         <div class="week-container" id="weekContainer"></div>
 
         <!-- КНОПКА ДОБАВЛЕНИЯ -->
@@ -1438,6 +1388,10 @@
                     <option value="postponed">⏳ Перенесено</option>
                     <option value="cancelled">❌ Отменено</option>
                 </select>
+                <div class="checkbox-row" id="onlyThisDay" style="display:none;">
+                    <input type="checkbox" id="onlyThisDayCheck" />
+                    <label for="onlyThisDayCheck">Применить статус только к этому дню</label>
+                </div>
                 <div class="checkbox-row">
                     <input type="checkbox" id="allowOverlap" />
                     <label for="allowOverlap">✅ Разрешено пересечение (не считать конфликтом)</label>
@@ -1454,6 +1408,7 @@
                 </p>
             </div>
             <input type="hidden" id="editingEventId" value="" />
+            <input type="hidden" id="editingDateStr" value="" />
             <button class="btn-primary" onclick="saveEvent()" id="saveEventBtn" style="margin-top:16px;">Сохранить</button>
             <button class="btn-secondary" onclick="closeEvent()" style="margin-top:8px;">Отмена</button>
         </div>
@@ -1618,6 +1573,14 @@
         function toDateStr(date) {
             const d = dateOnly(date);
             return d.toISOString().slice(0,10);
+        }
+
+        // ---------- СТАТУСЫ ----------
+        function getEffectiveStatus(event, dateStr) {
+            if (event.statusExceptions && event.statusExceptions[dateStr]) {
+                return event.statusExceptions[dateStr];
+            }
+            return event.status || 'completed';
         }
 
         // ---------- СОБЫТИЯ ----------
@@ -1797,18 +1760,19 @@
                         const start = new Date(ev.start);
                         const end = new Date(ev.end);
                         const timeStr = formatTime(start) + ' – ' + formatTime(end);
-                        const statusIcon = ev.status === 'completed' ? '✅' :
-                                          ev.status === 'postponed' ? '⏳' :
-                                          ev.status === 'cancelled' ? '❌' : '✅';
+                        const dateStr = toDateStr(date);
+                        const status = getEffectiveStatus(ev, dateStr);
+                        const statusIcon = status === 'completed' ? '✅' :
+                                          status === 'postponed' ? '⏳' :
+                                          status === 'cancelled' ? '❌' : '✅';
                         html += `
-                            <div class="event-chip" style="border-left-color:${color};">
+                            <div class="event-chip" style="border-left-color:${color};" onclick="editEvent('${ev.id}', '${dateStr}')">
                                 <span class="status-icon">${statusIcon}</span>
                                 <span class="dot" style="background:${color};"></span>
                                 <span>${ev.name} (${timeStr})</span>
                                 <span style="font-size:11px; color:var(--text-muted);">${name}</span>
                                 <span class="chip-actions">
-                                    <button onclick="editEvent('${ev.id}')" title="Редактировать">✎</button>
-                                    <button class="delete-chip" onclick="deleteEvent('${ev.id}', '${toDateStr(date)}')" title="Удалить">✕</button>
+                                    <button class="delete-chip" onclick="event.stopPropagation(); deleteEvent('${ev.id}', '${dateStr}')" title="Удалить">✕</button>
                                 </span>
                             </div>
                         `;
@@ -1878,9 +1842,11 @@
                     const conflictClass = isConflict ? ' conflict' : '';
                     const badge = isConflict ? '<span class="conflict-badge">⚠️</span>' : '';
 
-                    const statusIcon = ev.status === 'completed' ? '✅' :
-                                      ev.status === 'postponed' ? '⏳' :
-                                      ev.status === 'cancelled' ? '❌' : '✅';
+                    const dateStr = toDateStr(date);
+                    const status = getEffectiveStatus(ev, dateStr);
+                    const statusIcon = status === 'completed' ? '✅' :
+                                      status === 'postponed' ? '⏳' :
+                                      status === 'cancelled' ? '❌' : '✅';
 
                     const colWidth = (1 / totalCols) * 100;
                     const leftOffset = colIndex * colWidth;
@@ -1889,7 +1855,7 @@
                     html += `
                         <div class="grid-event-block${conflictClass}" style="top:${top}px; height:${height}px; background:${color}; left:${leftOffset}%; width:${innerWidth}%;"
                              data-event-id="${ev.id}"
-                             onclick="editEvent('${ev.id}')">
+                             onclick="editEvent('${ev.id}', '${dateStr}')">
                             ${badge}
                             <span class="status-icon">${statusIcon}</span>
                             <strong>${ev.name}</strong>
@@ -2010,11 +1976,12 @@
                     const name = participant ? participant.name : 'Без участника';
                     const start = new Date(ev.start);
                     const end = new Date(ev.end);
-                    const statusIcon = ev.status === 'completed' ? '✅' :
-                                      ev.status === 'postponed' ? '⏳' :
-                                      ev.status === 'cancelled' ? '❌' : '✅';
+                    const status = getEffectiveStatus(ev, toDateStr(date));
+                    const statusIcon = status === 'completed' ? '✅' :
+                                      status === 'postponed' ? '⏳' :
+                                      status === 'cancelled' ? '❌' : '✅';
                     html += `
-                        <div class="modal-dish" style="border-left-color:${color};">
+                        <div class="modal-dish" style="border-left-color:${color};" onclick="editEvent('${ev.id}', '${toDateStr(date)}'); closeDayEvents();">
                             <span class="dish-name">
                                 <span class="status-badge">${statusIcon}</span>
                                 <strong>${ev.name}</strong>
@@ -2022,8 +1989,7 @@
                                 <span style="font-size:13px;">${name}</span>
                             </span>
                             <div class="dish-actions">
-                                <button class="action-btn" onclick="editEvent('${ev.id}'); closeDayEvents();" title="Редактировать">✎</button>
-                                <button class="action-btn delete-btn" onclick="deleteEvent('${ev.id}', '${toDateStr(date)}'); closeDayEvents();" title="Удалить">✕</button>
+                                <button class="action-btn delete-btn" onclick="event.stopPropagation(); deleteEvent('${ev.id}', '${toDateStr(date)}'); closeDayEvents();" title="Удалить">✕</button>
                             </div>
                         </div>
                     `;
@@ -2120,7 +2086,6 @@
             text = text.replace(/\s+/g, ' ').trim();
             let result = { name: '', start: null, end: null, participantId: null, participantName: '' };
 
-            // Время
             let timeMatch = null;
             let timeRegex = /(?:в\s*)?(\d{1,2}):(\d{2})\s*(?:[уа])?/i;
             let match = text.match(timeRegex);
@@ -2152,7 +2117,6 @@
                 }
             }
 
-            // Дата
             let dateObj = null;
             let dateRegex = /(сегодня|завтра|послезавтра)/i;
             let dateMatch = text.match(dateRegex);
@@ -2218,7 +2182,6 @@
                 }
             }
 
-            // Участник
             let participantName = '';
             let participantMatch = text.match(/(?:с|со)\s+([А-Яа-яЁё]+)/i);
             if (participantMatch) {
@@ -2275,12 +2238,14 @@
             document.getElementById('recurrenceUntil').value = '';
             document.getElementById('allowOverlap').checked = false;
             document.getElementById('eventStatus').value = 'completed';
+            document.getElementById('editingDateStr').value = '';
+            document.getElementById('onlyThisDay').style.display = 'none';
             populateParticipantSelect();
             switchEventMode('manual');
             openModal('eventModal');
         }
 
-        function editEvent(eventId) {
+        function editEvent(eventId, dateStr) {
             const ev = data.events.find(e => e.id === eventId);
             if (!ev) return;
             document.getElementById('eventModalTitle').textContent = '✎ Редактировать событие';
@@ -2288,12 +2253,30 @@
             document.getElementById('saveEventBtn').textContent = 'Обновить';
             document.getElementById('eventTextInput').value = '';
 
+            document.getElementById('editingDateStr').value = dateStr || '';
+
             const start = new Date(ev.start);
             const end = new Date(ev.end);
             document.getElementById('eventName').value = ev.name;
             document.getElementById('eventNotes').value = ev.notes || '';
             document.getElementById('allowOverlap').checked = ev.allowOverlap || false;
-            document.getElementById('eventStatus').value = ev.status || 'completed';
+
+            let currentStatus = ev.status || 'completed';
+            if (dateStr && ev.statusExceptions && ev.statusExceptions[dateStr]) {
+                currentStatus = ev.statusExceptions[dateStr];
+            }
+            document.getElementById('eventStatus').value = currentStatus;
+
+            const isRecurring = ev.recurrence && ev.recurrence.type !== 'none';
+            const onlyThisDayCheck = document.getElementById('onlyThisDay');
+            if (isRecurring && dateStr) {
+                onlyThisDayCheck.style.display = 'flex';
+                onlyThisDayCheck.querySelector('input').checked = !!(ev.statusExceptions && ev.statusExceptions[dateStr]);
+            } else {
+                onlyThisDayCheck.style.display = 'none';
+                onlyThisDayCheck.querySelector('input').checked = false;
+            }
+
             document.getElementById('eventStart').value = toLocalDatetime(start);
             document.getElementById('eventEnd').value = toLocalDatetime(end);
 
@@ -2329,6 +2312,7 @@
 
         function saveEvent() {
             const id = document.getElementById('editingEventId').value;
+            const dateStr = document.getElementById('editingDateStr').value;
             const name = document.getElementById('eventName').value.trim();
             let start = document.getElementById('eventStart').value;
             let end = document.getElementById('eventEnd').value;
@@ -2339,6 +2323,7 @@
             const allowOverlap = document.getElementById('allowOverlap').checked;
             const notes = document.getElementById('eventNotes').value.trim();
             const status = document.getElementById('eventStatus').value;
+            const onlyThisDay = document.getElementById('onlyThisDayCheck').checked;
 
             if (!name || !start || !end || !participantId) {
                 alert('Заполните все поля!');
@@ -2359,18 +2344,46 @@
                 finalInterval = 3;
             }
             const recurrence = { type: finalRecType, interval: finalInterval, until: recUntil || null };
-            const exceptions = [];
 
             let eventObj;
             if (id) {
                 const ev = data.events.find(e => e.id === id);
                 if (!ev) return;
-                ev.name = name; ev.start = start; ev.end = end;
-                ev.participantId = participantId; ev.recurrence = recurrence;
-                ev.allowOverlap = allowOverlap; ev.notes = notes; ev.status = status;
+                ev.name = name;
+                ev.start = start;
+                ev.end = end;
+                ev.participantId = participantId;
+                ev.recurrence = recurrence;
+                ev.allowOverlap = allowOverlap;
+                ev.notes = notes;
+
+                if (onlyThisDay && dateStr) {
+                    if (!ev.statusExceptions) ev.statusExceptions = {};
+                    ev.statusExceptions[dateStr] = status;
+                } else {
+                    ev.status = status;
+                    if (ev.statusExceptions && dateStr) {
+                        delete ev.statusExceptions[dateStr];
+                        if (Object.keys(ev.statusExceptions).length === 0) {
+                            delete ev.statusExceptions;
+                        }
+                    }
+                }
                 eventObj = ev;
             } else {
-                eventObj = { id: generateId(), name, start, end, participantId, recurrence, allowOverlap, notes, status, exceptions: [] };
+                eventObj = {
+                    id: generateId(),
+                    name,
+                    start,
+                    end,
+                    participantId,
+                    recurrence,
+                    allowOverlap,
+                    notes,
+                    status,
+                    exceptions: [],
+                    statusExceptions: {}
+                };
             }
 
             const others = data.events.filter(e => e.id !== eventObj.id);
@@ -2602,7 +2615,6 @@
             tableHtml += `</table>`;
             resultDiv.innerHTML = tableHtml;
 
-            // Рисуем современную диаграмму
             drawModernPieChart(sorted);
         }
 
@@ -2620,7 +2632,6 @@
             const total = data.reduce((sum, [, val]) => sum + val, 0);
             if (total === 0) return;
 
-            // Используем пастельные оттенки
             const pieColors = [
                 '#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8',
                 '#F7DC6F', '#BB8FCE', '#85C1E9', '#F8C471', '#82E0AA'
@@ -2639,7 +2650,6 @@
                 const color = pieColors[index % pieColors.length];
                 const endAngle = startAngle + sliceAngle;
 
-                // Тень
                 ctx.shadowColor = 'rgba(0,0,0,0.1)';
                 ctx.shadowBlur = shadowBlur;
                 ctx.shadowOffsetX = 2;
@@ -2656,7 +2666,6 @@
                 ctx.lineWidth = 2;
                 ctx.stroke();
 
-                // Процент
                 const midAngle = startAngle + sliceAngle / 2;
                 const labelRadius = radius * 0.65;
                 const labelX = centerX + Math.cos(midAngle) * labelRadius;
@@ -2673,7 +2682,6 @@
                 startAngle = endAngle;
             });
 
-            // Легенда
             const legendContainer = document.getElementById('chartLegend');
             let legendHtml = '';
             legendData.forEach(item => {
