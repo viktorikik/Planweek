@@ -632,7 +632,7 @@
         }
 
         /* ============================================================
-           8. НЕДЕЛЬНАЯ СЕТКА (ГРИД)
+           8. НЕДЕЛЬНАЯ СЕТКА (ГРИД) – с дорожками
            ============================================================ */
         .grid-wrapper {
             overflow-x: auto;
@@ -706,14 +706,13 @@
             pointer-events: none;
             opacity: 0.5;
         }
+        /* Блок события с дорожками */
         .grid-event-block {
             position: absolute;
-            left: 4px;
-            right: 4px;
             border-radius: 6px;
-            padding: 2px 6px;
+            padding: 2px 4px;
             color: white;
-            font-size: 11px;
+            font-size: 10px;
             overflow: hidden;
             box-shadow: 0 1px 4px rgba(0,0,0,0.1);
             display: flex;
@@ -723,9 +722,10 @@
             z-index: 5;
             transition: box-shadow 0.2s, opacity 0.2s;
             touch-action: none;
+            min-height: 20px;
         }
         .grid-event-block.conflict {
-            outline: 3px solid #ef4444;
+            outline: 2px solid #ef4444;
             outline-offset: -2px;
         }
         .grid-event-block .conflict-badge {
@@ -743,17 +743,17 @@
             justify-content: center;
         }
         .grid-event-block strong {
-            font-size: 11px;
+            font-size: 10px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
         .grid-event-block .time {
-            font-size: 9px;
+            font-size: 8px;
             opacity: 0.9;
         }
         .grid-event-block .participant {
-            font-size: 9px;
+            font-size: 8px;
             opacity: 0.8;
         }
 
@@ -1072,7 +1072,7 @@
         .color-option {
             width: 40px;
             height: 40px;
-            border-radius: 50%;
+            border-radius: 50%; /* круги */
             cursor: pointer;
             transition: var(--transition-fast);
             border: 3px solid transparent;
@@ -1095,7 +1095,7 @@
         .member-row .color-dot {
             width: 24px;
             height: 24px;
-            border-radius: 50%;
+            border-radius: 50%; /* круги */
         }
         .member-row span {
             flex: 1;
@@ -1193,7 +1193,11 @@
                 height: 24px;
             }
             .grid-event-block {
-                font-size: 10px;
+                font-size: 9px;
+                padding: 1px 3px;
+            }
+            .grid-event-block strong {
+                font-size: 9px;
             }
         }
 
@@ -1249,6 +1253,12 @@
             }
             .grid-hour {
                 height: 32px;
+            }
+            .grid-event-block {
+                font-size: 10px;
+            }
+            .grid-event-block strong {
+                font-size: 10px;
             }
         }
     </style>
@@ -1422,10 +1432,26 @@
         </div>
     </div>
 
+    <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ (для периодических) -->
+    <div class="modal-overlay" id="deleteChoiceModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>🗑️ Удалить событие</h3>
+                <button class="modal-close" onclick="closeDeleteChoice()">✕</button>
+            </div>
+            <p style="margin:16px 0; color:var(--text-primary);">Это событие повторяется. Что вы хотите сделать?</p>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <button class="btn-primary" onclick="confirmDeleteSingle()" style="width:100%;">Удалить только это вхождение</button>
+                <button class="btn-warning" onclick="confirmDeleteAll()" style="width:100%;">Удалить все повторения</button>
+                <button class="btn-secondary" onclick="closeDeleteChoice()" style="width:100%;">Отмена</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ============================================================
-        //   ПОЛНЫЙ JS-КОД (ВЕСЬ ФУНКЦИОНАЛ)
-        //   (сохранён без изменений, кроме переключения темы)
+        //   ПОЛНЫЙ JS-КОД
+        //   с поддержкой дорожек в сетке и удаления одного вхождения
         // ============================================================
 
         // ---------- ДАННЫЕ ----------
@@ -1450,6 +1476,8 @@
         let currentTheme = 'auto';
         let pendingEvent = null;
         let currentEventMode = 'manual';
+        // Для удаления
+        let deleteTarget = null; // { eventId, dateStr }
 
         function generateId() { return Date.now() + '_' + Math.random().toString(36).substr(2, 6); }
         function getMember(id) { return data.members.find(m => m.id === id); }
@@ -1510,11 +1538,20 @@
             return new Date(date.getFullYear(), date.getMonth(), date.getDate());
         }
 
-        // ---------- СОБЫТИЯ С ПОВТОРЕНИЯМИ ----------
+        function toDateStr(date) {
+            const d = dateOnly(date);
+            return d.toISOString().slice(0,10);
+        }
+
+        // ---------- СОБЫТИЯ С ПОВТОРЕНИЯМИ И ИСКЛЮЧЕНИЯМИ ----------
         function isEventOnDate(event, date) {
             const baseStart = new Date(event.start);
             const baseDate = dateOnly(baseStart);
             const target = dateOnly(date);
+            // Проверяем исключения
+            if (event.exceptions && event.exceptions.includes(toDateStr(target))) {
+                return false;
+            }
             if (!event.recurrence || event.recurrence.type === 'none') {
                 return baseDate.getTime() === target.getTime();
             }
@@ -1689,7 +1726,7 @@
                                 <span style="font-size:11px; color:var(--text-muted);">${name}</span>
                                 <span class="chip-actions">
                                     <button onclick="editEvent('${ev.id}')" title="Редактировать">✎</button>
-                                    <button class="delete-chip" onclick="deleteEvent('${ev.id}')" title="Удалить">✕</button>
+                                    <button class="delete-chip" onclick="deleteEvent('${ev.id}', '${toDateStr(date)}')" title="Удалить">✕</button>
                                 </span>
                             </div>
                         `;
@@ -1706,7 +1743,7 @@
             return ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index];
         }
 
-        // ---------- НЕДЕЛЬНАЯ СЕТКА ----------
+        // ---------- НЕДЕЛЬНАЯ СЕТКА С ДОРОЖКАМИ ----------
         function renderGrid() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(periodOffset);
@@ -1720,51 +1757,27 @@
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
 
-                const hourColors = new Array(24).fill(null).map(() => []);
+                // Вычисляем дорожки (колонки) для событий
+                // Каждому событию назначаем колонку (columnIndex) и общее количество колонок (totalCols)
+                const eventsWithCols = assignColumns(dayEvents);
+
+                html += `<div class="grid-day" data-day-index="${index}">`;
+                html += `<div class="grid-day-header">${getDayName(index)}<br><span class="date">${formatDate(date)}</span></div>`;
+                html += `<div class="grid-timeline" style="height:${totalHeight}px;" data-date="${toDateStr(date)}">`;
+
+                // Рисуем часы
                 for (let h = 0; h < 24; h++) {
-                    const hourStart = h, hourEnd = h + 1;
+                    const top = h * hourHeight;
+                    // Проверяем, есть ли конфликт (для индикации)
                     const eventsInHour = dayEvents.filter(ev => {
                         const s = new Date(ev.start);
                         const e = new Date(ev.end);
                         const sHour = s.getHours() + s.getMinutes() / 60;
                         const eHour = e.getHours() + e.getMinutes() / 60;
-                        return intervalsOverlap(sHour, eHour, hourStart, hourEnd);
+                        return intervalsOverlap(sHour, eHour, h, h+1);
                     });
-                    const colors = new Set();
-                    eventsInHour.forEach(ev => {
-                        const color = getMemberColor(ev.participantId);
-                        if (color) colors.add(color);
-                    });
-                    hourColors[h] = Array.from(colors);
-                }
-
-                html += `<div class="grid-day" data-day-index="${index}">`;
-                html += `<div class="grid-day-header">${getDayName(index)}<br><span class="date">${formatDate(date)}</span></div>`;
-                html += `<div class="grid-timeline" style="height:${totalHeight}px;" data-date="${date.toISOString().slice(0,10)}">`;
-
-                for (let h = 0; h < 24; h++) {
-                    const top = h * hourHeight;
-                    const colors = hourColors[h];
-                    const hasOverlap = colors.length > 1;
-                    if (hasOverlap) {
-                        let gradient = '';
-                        if (colors.length === 2) {
-                            gradient = `linear-gradient(45deg, ${colors[0]} 50%, ${colors[1]} 50%)`;
-                        } else {
-                            const parts = colors.map((c, i) => `${c} ${(i/colors.length)*100}%, ${c} ${((i+1)/colors.length)*100}%`).join(', ');
-                            gradient = `repeating-linear-gradient(45deg, ${parts})`;
-                        }
-                        html += `<div class="grid-hour-overlay" style="top:${top}px; height:${hourHeight}px; background:${gradient};"></div>`;
-                    }
                     let hasRealConflict = false;
-                    if (colors.length > 1) {
-                        const eventsInHour = dayEvents.filter(ev => {
-                            const s = new Date(ev.start);
-                            const e = new Date(ev.end);
-                            const sHour = s.getHours() + s.getMinutes() / 60;
-                            const eHour = e.getHours() + e.getMinutes() / 60;
-                            return intervalsOverlap(sHour, eHour, h, h+1);
-                        });
+                    if (eventsInHour.length > 1) {
                         const hasUnresolved = eventsInHour.some(ev => !ev.allowOverlap);
                         if (hasUnresolved) hasRealConflict = true;
                     }
@@ -1772,14 +1785,8 @@
                     html += `<div class="grid-hour${conflictClass}" style="top:${top}px; height:${hourHeight}px;">${h}:00${hasRealConflict ? ' ⚠️' : ''}</div>`;
                 }
 
-                const sortedEvents = [...dayEvents].sort((a,b) => {
-                    const aStart = new Date(a.start).getTime();
-                    const bStart = new Date(b.start).getTime();
-                    if (aStart !== bStart) return aStart - bStart;
-                    return new Date(a.end).getTime() - new Date(b.end).getTime();
-                });
-
-                sortedEvents.forEach((ev) => {
+                // Рисуем события с дорожками
+                eventsWithCols.forEach(({ ev, colIndex, totalCols }) => {
                     const start = new Date(ev.start);
                     const end = new Date(ev.end);
                     const startHour = start.getHours() + start.getMinutes() / 60;
@@ -1794,21 +1801,14 @@
                     const conflictClass = isConflict ? ' conflict' : '';
                     const badge = isConflict ? '<span class="conflict-badge">⚠️</span>' : '';
 
-                    let isOverlap = false;
-                    for (let other of sortedEvents) {
-                        if (other.id === ev.id) continue;
-                        if (!other.allowOverlap || !ev.allowOverlap) continue;
-                        const oStart = new Date(other.start);
-                        const oEnd = new Date(other.end);
-                        if (intervalsOverlap(start.getTime(), end.getTime(), oStart.getTime(), oEnd.getTime())) {
-                            isOverlap = true;
-                            break;
-                        }
-                    }
-                    const opacityStyle = isOverlap ? ' opacity:0.7;' : '';
+                    // Ширина блока = 100% / totalCols, смещение = colIndex * ширина
+                    const colWidth = (1 / totalCols) * 100;
+                    const leftOffset = colIndex * colWidth;
+                    // Добавляем небольшие отступы между блоками (2px слева и справа)
+                    const innerWidth = colWidth - 0.5; // 0.5% на отступы
 
                     html += `
-                        <div class="grid-event-block${conflictClass}" style="top:${top}px; height:${height}px; background:${color};${opacityStyle}"
+                        <div class="grid-event-block${conflictClass}" style="top:${top}px; height:${height}px; background:${color}; left:${leftOffset}%; width:${innerWidth}%;"
                              data-event-id="${ev.id}"
                              onclick="editEvent('${ev.id}')">
                             ${badge}
@@ -1828,6 +1828,48 @@
             containerEl.removeEventListener('touchstart', onSwipeStart);
             containerEl.removeEventListener('touchmove', onSwipeMove);
             containerEl.removeEventListener('touchend', onSwipeEnd);
+        }
+
+        // ---- Алгоритм назначения колонок ----
+        function assignColumns(events) {
+            if (events.length === 0) return [];
+            // Сортируем по времени начала
+            const sorted = [...events].sort((a,b) => new Date(a.start) - new Date(b.start));
+            const result = [];
+            // Группируем по пересечениям
+            // Для каждого события определяем максимальное количество пересекающихся событий в его интервале
+            // Простой алгоритм: проходим по событиям, для каждого ищем пересекающиеся, определяем колонку
+            // Более сложный: используем "column assignment" как в календарях
+            // Здесь применим жадный алгоритм: для каждого события назначаем минимальный свободный индекс среди пересекающихся
+            const columns = [];
+            sorted.forEach((ev) => {
+                const evStart = new Date(ev.start).getTime();
+                const evEnd = new Date(ev.end).getTime();
+                // Находим занятые колонки среди уже назначенных событий, которые пересекаются с текущим
+                const usedCols = new Set();
+                for (let i = 0; i < columns.length; i++) {
+                    const other = columns[i];
+                    const otherStart = new Date(other.start).getTime();
+                    const otherEnd = new Date(other.end).getTime();
+                    if (intervalsOverlap(evStart, evEnd, otherStart, otherEnd)) {
+                        usedCols.add(other.col);
+                    }
+                }
+                // Назначаем минимальную свободную колонку
+                let col = 0;
+                while (usedCols.has(col)) col++;
+                // Сохраняем колонку
+                ev.col = col;
+                columns.push({ ...ev, col });
+            });
+            // Определяем общее количество колонок
+            const totalCols = columns.reduce((max, e) => Math.max(max, e.col + 1), 0);
+            // Возвращаем результат
+            return columns.map(ev => ({
+                ev,
+                colIndex: ev.col,
+                totalCols: totalCols
+            }));
         }
 
         // ---------- МЕСЯЦ ----------
@@ -1879,7 +1921,6 @@
 
             html += `</div>`;
             container.innerHTML = html;
-            // Включаем свайп для месяца
             initSwipe('month');
         }
 
@@ -1912,7 +1953,7 @@
                             </span>
                             <div class="dish-actions">
                                 <button class="action-btn" onclick="editEvent('${ev.id}'); closeDayEvents();" title="Редактировать">✎</button>
-                                <button class="action-btn delete-btn" onclick="deleteEvent('${ev.id}'); closeDayEvents();" title="Удалить">✕</button>
+                                <button class="action-btn delete-btn" onclick="deleteEvent('${ev.id}', '${toDateStr(date)}'); closeDayEvents();" title="Удалить">✕</button>
                             </div>
                         </div>
                     `;
@@ -2236,6 +2277,7 @@
             }
 
             const recurrence = { type: recType, interval: recInterval, until: recUntil || null };
+            const exceptions = []; // при создании пусто
 
             let eventObj;
             if (id) {
@@ -2244,9 +2286,10 @@
                 ev.name = name; ev.start = start; ev.end = end;
                 ev.participantId = participantId; ev.recurrence = recurrence;
                 ev.allowOverlap = allowOverlap; ev.notes = notes;
+                // exceptions не меняем при редактировании
                 eventObj = ev;
             } else {
-                eventObj = { id: generateId(), name, start, end, participantId, recurrence, allowOverlap, notes };
+                eventObj = { id: generateId(), name, start, end, participantId, recurrence, allowOverlap, notes, exceptions: [] };
             }
 
             const others = data.events.filter(e => e.id !== eventObj.id);
@@ -2280,11 +2323,53 @@
         }
         function rejectConflict() { closeModal('conflictModal'); pendingEvent = null; }
 
-        function deleteEvent(id) {
-            if (!confirm('Удалить событие?')) return;
-            data.events = data.events.filter(e => e.id !== id);
+        // ---------- УДАЛЕНИЕ С ВЫБОРОМ ----------
+        function deleteEvent(eventId, dateStr) {
+            const ev = data.events.find(e => e.id === eventId);
+            if (!ev) return;
+            // Проверяем, повторяется ли событие
+            const isRecurring = ev.recurrence && ev.recurrence.type !== 'none';
+            if (isRecurring) {
+                // Сохраняем цель для модалки выбора
+                deleteTarget = { eventId, dateStr };
+                openModal('deleteChoiceModal');
+            } else {
+                // Обычное событие – удаляем сразу
+                if (!confirm('Удалить событие?')) return;
+                data.events = data.events.filter(e => e.id !== eventId);
+                saveData();
+                render();
+            }
+        }
+
+        function closeDeleteChoice() {
+            closeModal('deleteChoiceModal');
+            deleteTarget = null;
+        }
+
+        function confirmDeleteSingle() {
+            if (!deleteTarget) return;
+            const { eventId, dateStr } = deleteTarget;
+            const ev = data.events.find(e => e.id === eventId);
+            if (ev) {
+                // Добавляем дату в исключения
+                if (!ev.exceptions) ev.exceptions = [];
+                if (!ev.exceptions.includes(dateStr)) {
+                    ev.exceptions.push(dateStr);
+                    saveData();
+                    render();
+                }
+            }
+            closeDeleteChoice();
+        }
+
+        function confirmDeleteAll() {
+            if (!deleteTarget) return;
+            const { eventId } = deleteTarget;
+            data.events = data.events.filter(e => e.id !== eventId);
             saveData();
             render();
+            closeDeleteChoice();
         }
 
         // ---------- НАСТРОЙКИ СЕМЬИ ----------
