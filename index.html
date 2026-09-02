@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Семейный планировщик</title>
     <style>
-        /* ----- CSS-переменные ----- */
+        /* ----- CSS-переменные (без изменений) ----- */
         :root {
             --bg: #f4f6f9;
             --card-bg: #ffffff;
@@ -142,7 +142,7 @@
         }
         .color-dot {
             display: inline-block; width: 14px; height: 14px;
-            border-radius: 50%; /* круги */ 
+            border-radius: 50%;
             border: 1px solid rgba(0,0,0,0.1); flex-shrink: 0;
         }
         .view-switch {
@@ -196,18 +196,29 @@
         .event-actions button:hover { color: var(--fab-bg); }
         .event-actions .delete-event:hover { color: #ef4444; }
 
-        /* Сетка (без drag&drop) */
+        /* Сетка — исправлена прокрутка */
         .grid-wrapper {
-            overflow-x: auto; -webkit-overflow-scrolling: touch;
-            margin: 0 -12px; padding: 0 12px; touch-action: pan-y;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            margin: 0 -12px;
+            padding: 0 12px;
+            touch-action: pan-x; /* разрешаем горизонтальную прокрутку */
         }
         .grid-scroll {
-            display: flex; gap: 4px; min-width: 700px; touch-action: pan-y;
+            display: flex;
+            gap: 4px;
+            min-width: 700px;
+            touch-action: pan-x; /* для горизонтальной прокрутки */
         }
         .grid-day {
-            flex: 1; min-width: 80px; position: relative;
-            background: var(--grid-bg); border-radius: 12px;
-            padding: 0 4px 4px 4px; transition: background 0.2s;
+            flex: 1;
+            min-width: 80px;
+            position: relative;
+            background: var(--grid-bg);
+            border-radius: 12px;
+            padding: 0 4px 4px 4px;
+            transition: background 0.2s;
+            touch-action: pan-y; /* вертикальная прокрутка внутри дня */
         }
         .grid-day-header {
             text-align: center; font-weight: 600; padding: 8px 0;
@@ -217,7 +228,7 @@
         .grid-timeline {
             position: relative; height: 768px; background: var(--grid-cell);
             border-radius: 0 0 12px 12px; overflow: hidden; transition: background 0.2s;
-            touch-action: pan-y;
+            touch-action: pan-y; /* вертикальная прокрутка внутри дня */
         }
         .grid-hour {
             position: absolute; left: 0; right: 0; border-top: 1px solid var(--hour-line);
@@ -235,7 +246,7 @@
             padding: 2px 6px; color: white; font-size: 11px; overflow: hidden;
             box-shadow: 0 1px 4px rgba(0,0,0,0.1);
             display: flex; flex-direction: column; justify-content: center;
-            cursor: pointer; /* убрали grab */
+            cursor: pointer;
             z-index: 5; transition: box-shadow 0.2s, opacity 0.2s;
             touch-action: none;
         }
@@ -249,7 +260,7 @@
         .grid-event-block .time { font-size: 9px; opacity: 0.9; }
         .grid-event-block .participant { font-size: 9px; opacity: 0.8; }
 
-        /* Месяц */
+        /* Месяц (без изменений) */
         .month-grid {
             background: var(--card-bg); border-radius: 20px; padding: 12px;
             box-shadow: var(--shadow);
@@ -284,7 +295,7 @@
         }
         .month-day.today { border-color: var(--fab-bg); background: var(--switch-bg); }
 
-        /* Модалки */
+        /* Модалки (без изменений) */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: rgba(0,0,0,0.4);
@@ -334,8 +345,8 @@
             display: flex; align-items: center; gap: 10px;
             padding: 8px 0; border-bottom: 1px solid var(--border);
         }
-        .modal .member-row .color-dot { 
-            width: 24px; height: 24px; border-radius: 50%; /* круги */
+        .modal .member-row .color-dot {
+            width: 24px; height: 24px; border-radius: 50%;
         }
         .modal .member-row span { flex: 1; }
         .modal .member-row button {
@@ -379,7 +390,6 @@
         }
         .fab:hover { transform: scale(1.05); }
 
-        /* Переключатель режимов в модалке события */
         .mode-switch {
             display: flex; gap: 6px; background: var(--mode-btn-bg);
             border-radius: 40px; padding: 4px; margin-bottom: 16px;
@@ -397,7 +407,6 @@
             border-radius: 20px; resize: vertical; min-height: 80px;
         }
 
-        /* Аналитика */
         .analytics-result { margin-top: 16px; }
         .analytics-table {
             width: 100%; border-collapse: collapse; margin-top: 8px;
@@ -553,7 +562,7 @@
         </div>
     </div>
 
-    <!-- Модалка просмотра дня в месяце (с кнопками редактирования/удаления) -->
+    <!-- Модалка просмотра дня в месяце -->
     <div class="modal-overlay" id="dayEventsModal">
         <div class="modal">
             <h2><span id="dayEventsTitle">События</span><button onclick="closeDayEvents()">✕</button></h2>
@@ -839,16 +848,18 @@
             return ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'][index];
         }
 
-        // ----- НЕДЕЛЬНАЯ СЕТКА (без drag&drop) -----
+        // ----- НЕДЕЛЬНАЯ СЕТКА (исправлена прокрутка) -----
         function renderGrid() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(periodOffset);
+            // Получаем события для каждого дня
             const eventsByDay = days.map(d => getEventsForDate(d));
             const hourHeight = window.innerWidth <= 480 ? 24 : 32;
             const totalHeight = 24 * hourHeight;
 
             let html = `<div class="grid-wrapper"><div class="grid-scroll" id="gridScroll">`;
             days.forEach((date, index) => {
+                // Фильтруем по участникам
                 const dayEvents = eventsByDay[index]
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
@@ -928,7 +939,6 @@
                     const conflictClass = isConflict ? ' conflict' : '';
                     const badge = isConflict ? '<span class="conflict-badge">⚠️</span>' : '';
 
-                    // Проверяем перекрытие allowOverlap
                     let isOverlap = false;
                     for (let other of sortedEvents) {
                         if (other.id === ev.id) continue;
@@ -958,7 +968,7 @@
             });
             html += `</div></div>`;
             container.innerHTML = html;
-            // drag&drop больше не инициализируем
+            // drag&drop отключён
             const containerEl = document.getElementById('weekContainer');
             containerEl.removeEventListener('touchstart', onSwipeStart);
             containerEl.removeEventListener('touchmove', onSwipeMove);
@@ -1016,7 +1026,7 @@
             containerEl.removeEventListener('touchend', onSwipeEnd);
         }
 
-        // ---- Просмотр дня в месяце с возможностью редактирования/удаления ----
+        // ---- Просмотр дня в месяце ----
         function showDayEvents(dateStr) {
             const date = new Date(dateStr);
             if (isNaN(date.getTime())) {
