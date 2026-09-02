@@ -6,7 +6,7 @@
     <title>Планировщик расписания</title>
     <style>
         /* ============================================================
-           1. ПЕРЕМЕННЫЕ – СВЕТЛАЯ ТЕМА
+           ПОЛНЫЙ CSS (без изменений, кроме дополнительных стилей)
            ============================================================ */
         :root {
             --bg-primary: #f2f0ed;
@@ -43,7 +43,6 @@
             --color-main: #ef4444;
             --search-bg: #ffffff;
             --search-border: #d1d1d9;
-
             --spacing-xs: 4px;
             --spacing-sm: 8px;
             --spacing-md: 12px;
@@ -56,12 +55,10 @@
             --shadow-md: 0 8px 24px -8px rgba(0, 0, 0, 0.15);
             --transition-fast: 0.15s;
             --transition-normal: 0.25s;
-
             --card-bg: #ffffff;
             --card-hover-bg: #f5f5fa;
             --input-padding: 8px 14px;
             --btn-padding: 8px 20px;
-
             --accent-color: #ff6b35;
             --accent-hover: #e55a2b;
             --accent-light: rgba(255, 107, 53, 0.12);
@@ -1284,7 +1281,6 @@
 <body>
 
     <div class="app" id="app">
-        <!-- ШАПКА -->
         <div class="app-header">
             <div class="logo">
                 <h1>📅 Планировщик расписания</h1>
@@ -1296,7 +1292,6 @@
             </div>
         </div>
 
-        <!-- НАВИГАЦИЯ ПО НЕДЕЛЕ/МЕСЯЦУ -->
         <div class="calendar-wrap">
             <div class="calendar-header">
                 <div class="month-nav-wrapper">
@@ -1310,24 +1305,19 @@
             </div>
         </div>
 
-        <!-- ФИЛЬТРЫ -->
         <div class="filters" id="filtersContainer"></div>
 
-        <!-- ПЕРЕКЛЮЧАТЕЛЬ РЕЖИМОВ -->
         <div class="view-toggle" id="viewToggle">
             <button class="active" data-view="list" onclick="setView('list')">📋 Список</button>
             <button data-view="grid" onclick="setView('grid')">📊 Сетка</button>
             <button data-view="month" onclick="setView('month')">📅 Месяц</button>
         </div>
 
-        <!-- КОНТЕЙНЕР -->
         <div class="week-container" id="weekContainer"></div>
-
-        <!-- КНОПКА ДОБАВЛЕНИЯ -->
         <button class="fab" onclick="openAddEvent()">＋</button>
     </div>
 
-    <!-- МОДАЛКА НАСТРОЕК УЧАСТНИКОВ -->
+    <!-- Модалки -->
     <div class="modal-overlay" id="settingsModal">
         <div class="modal">
             <div class="modal-header">
@@ -1345,7 +1335,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА СОБЫТИЯ -->
     <div class="modal-overlay" id="eventModal">
         <div class="modal">
             <div class="modal-header">
@@ -1414,7 +1403,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА КОНФЛИКТА -->
     <div class="modal-overlay" id="conflictModal">
         <div class="modal">
             <div class="modal-header">
@@ -1429,7 +1417,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА АНАЛИТИКИ -->
     <div class="modal-overlay" id="analyticsModal">
         <div class="modal">
             <div class="modal-header">
@@ -1455,7 +1442,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ПРОСМОТРА ДНЯ В МЕСЯЦЕ -->
     <div class="modal-overlay" id="dayEventsModal">
         <div class="modal">
             <div class="modal-header">
@@ -1466,7 +1452,6 @@
         </div>
     </div>
 
-    <!-- МОДАЛКА ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ -->
     <div class="modal-overlay" id="deleteChoiceModal">
         <div class="modal">
             <div class="modal-header">
@@ -1484,7 +1469,7 @@
 
     <script>
         // ============================================================
-        //   ПОЛНЫЙ JS-КОД
+        //   ПОЛНЫЙ JS-КОД (исправлен saveEvent)
         // ============================================================
 
         // ---------- ДАННЫЕ ----------
@@ -2310,6 +2295,9 @@
             }
         }
 
+        // ============================================================
+        //   ГЛАВНОЕ ИСПРАВЛЕНИЕ – ФУНКЦИЯ saveEvent
+        // ============================================================
         function saveEvent() {
             const id = document.getElementById('editingEventId').value;
             const dateStr = document.getElementById('editingDateStr').value;
@@ -2358,16 +2346,14 @@
                 ev.notes = notes;
 
                 if (onlyThisDay && dateStr) {
+                    // Сохраняем статус только для этого дня
                     if (!ev.statusExceptions) ev.statusExceptions = {};
                     ev.statusExceptions[dateStr] = status;
+                    // Общий статус не меняем
                 } else {
+                    // Применяем ко всем дням – обновляем общий статус и удаляем все исключения
                     ev.status = status;
-                    if (ev.statusExceptions && dateStr) {
-                        delete ev.statusExceptions[dateStr];
-                        if (Object.keys(ev.statusExceptions).length === 0) {
-                            delete ev.statusExceptions;
-                        }
-                    }
+                    ev.statusExceptions = {}; // удаляем все переопределения
                 }
                 eventObj = ev;
             } else {
@@ -2396,7 +2382,11 @@
                 return;
             }
 
-            if (id) { /* уже обновили */ } else { data.events.push(eventObj); }
+            if (id) {
+                // уже обновили
+            } else {
+                data.events.push(eventObj);
+            }
             saveData();
             closeModal('eventModal');
             render();
