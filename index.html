@@ -196,7 +196,7 @@
         .event-actions button:hover { color: var(--fab-bg); }
         .event-actions .delete-event:hover { color: #ef4444; }
 
-        /* Сетка — исправлена прокрутка */
+        /* Сетка — исправлена прокрутка и отображение */
         .grid-wrapper {
             overflow-x: auto;
             -webkit-overflow-scrolling: touch;
@@ -260,7 +260,7 @@
         .grid-event-block .time { font-size: 9px; opacity: 0.9; }
         .grid-event-block .participant { font-size: 9px; opacity: 0.8; }
 
-        /* Месяц (без изменений) */
+        /* Месяц */
         .month-grid {
             background: var(--card-bg); border-radius: 20px; padding: 12px;
             box-shadow: var(--shadow);
@@ -295,7 +295,7 @@
         }
         .month-day.today { border-color: var(--fab-bg); background: var(--switch-bg); }
 
-        /* Модалки (без изменений) */
+        /* Модалки */
         .modal-overlay {
             display: none; position: fixed; top: 0; left: 0;
             width: 100%; height: 100%; background: rgba(0,0,0,0.4);
@@ -841,7 +841,7 @@
                 html += `</div>`;
             });
             container.innerHTML = html;
-            initSwipe();
+            initSwipe('list');
         }
 
         function getDayName(index) {
@@ -852,14 +852,12 @@
         function renderGrid() {
             const container = document.getElementById('weekContainer');
             const days = getWeekDays(periodOffset);
-            // Получаем события для каждого дня
             const eventsByDay = days.map(d => getEventsForDate(d));
             const hourHeight = window.innerWidth <= 480 ? 24 : 32;
             const totalHeight = 24 * hourHeight;
 
             let html = `<div class="grid-wrapper"><div class="grid-scroll" id="gridScroll">`;
             days.forEach((date, index) => {
-                // Фильтруем по участникам
                 const dayEvents = eventsByDay[index]
                     .filter(ev => !isFilteredOut(ev.participantId))
                     .sort((a,b) => new Date(a.start) - new Date(b.start));
@@ -916,7 +914,7 @@
                     html += `<div class="grid-hour${conflictClass}" style="top:${top}px; height:${hourHeight}px;">${h}:00${hasRealConflict ? ' ⚠️' : ''}</div>`;
                 }
 
-                // События с прозрачностью при allowOverlap
+                // События
                 const sortedEvents = [...dayEvents].sort((a,b) => {
                     const aStart = new Date(a.start).getTime();
                     const bStart = new Date(b.start).getTime();
@@ -968,14 +966,17 @@
             });
             html += `</div></div>`;
             container.innerHTML = html;
-            // drag&drop отключён
+            // Для сетки свайп переключения недель отключаем, но оставляем горизонтальную прокрутку
             const containerEl = document.getElementById('weekContainer');
             containerEl.removeEventListener('touchstart', onSwipeStart);
             containerEl.removeEventListener('touchmove', onSwipeMove);
             containerEl.removeEventListener('touchend', onSwipeEnd);
+            // Принудительно включаем горизонтальную прокрутку
+            const wrapper = document.querySelector('.grid-wrapper');
+            if (wrapper) wrapper.style.overflowX = 'auto';
         }
 
-        // ----- МЕСЯЦ -----
+        // ----- МЕСЯЦ (с добавленным свайпом) -----
         function renderMonth() {
             const container = document.getElementById('weekContainer');
             const { first, last } = getMonthRange(periodOffset);
@@ -1020,10 +1021,8 @@
 
             html += `</div></div>`;
             container.innerHTML = html;
-            const containerEl = document.getElementById('weekContainer');
-            containerEl.removeEventListener('touchstart', onSwipeStart);
-            containerEl.removeEventListener('touchmove', onSwipeMove);
-            containerEl.removeEventListener('touchend', onSwipeEnd);
+            // Включаем свайп для месяца
+            initSwipe('month');
         }
 
         // ---- Просмотр дня в месяце ----
@@ -1066,16 +1065,20 @@
         function closeDayEvents() { closeModal('dayEventsModal'); }
 
         // ============================================================
-        //  СВАЙП (только список)
+        //  СВАЙП (для списка и месяца)
         // ============================================================
         let swipeStartX = 0, swipeStartY = 0, isSwiping = false;
+        let swipeTarget = 'list'; // 'list' или 'month'
 
-        function initSwipe() {
+        function initSwipe(mode) {
             const container = document.getElementById('weekContainer');
+            // Удаляем старые обработчики
             container.removeEventListener('touchstart', onSwipeStart);
             container.removeEventListener('touchmove', onSwipeMove);
             container.removeEventListener('touchend', onSwipeEnd);
-            if (currentView === 'list') {
+            // Включаем только для списка или месяца
+            if (mode === 'list' || mode === 'month') {
+                swipeTarget = mode;
                 container.addEventListener('touchstart', onSwipeStart, { passive: false });
                 container.addEventListener('touchmove', onSwipeMove, { passive: false });
                 container.addEventListener('touchend', onSwipeEnd, { passive: false });
